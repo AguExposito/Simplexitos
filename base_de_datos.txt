@@ -16,8 +16,8 @@ CREATE TABLE OrdenProveedor (
     ID_OrdenProveedor SERIAL PRIMARY KEY,
     ID_Proveedor VARCHAR(50) REFERENCES Proveedor(ID_Proveedor),
     ID_Producto INT REFERENCES Producto(ID_Producto),
-    precioPorUnidad FLOAT,
-    precioTotal FLOAT,
+    costoPorUnidad FLOAT,
+    costoTotal FLOAT,
     tiempoDeEnvio TIME,
     costoDepositoOrden FLOAT
 );
@@ -28,9 +28,10 @@ CREATE TABLE Inventario (
     frecuenciaDeReabastecimiento VARCHAR(50),
     nombreInventario VARCHAR(100),
     costoDepositoInv FLOAT,
-    precioVenta FLOAT,
-    precioPedido FLOAT,
+    costoVenta FLOAT,
+    costoPedido FLOAT,
     CGI VARCHAR(50),
+    puntoDeVenta TIME,
 	ID_Producto INT REFERENCES Producto(ID_Producto)
 );
 
