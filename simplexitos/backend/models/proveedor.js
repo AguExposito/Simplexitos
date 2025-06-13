@@ -6,6 +6,7 @@ const proveedores = db.define('proveedores', {
     cuit: {type: DataTypes.INTEGER},
     nombreprove: {type: DataTypes.STRING},
     localidad: {type: DataTypes.STRING},
+    fechaaltaproveedor: {type: DataTypes.DATE}
 },
 {
     timestamps:false,

@@ -62,8 +62,8 @@ export const cargarOrdenCompra = async (req, res) => {
 
         const nuevaOrden = await ordencompra.create({
             idinventario: inventarioAsociado.idinventario,
-            estadoorden: 'Pendiente',
-            fechaorden: new Date(),
+            estadoordendecompra: 'Pendiente',
+            fechaaltaordendecompra: new Date(),
             cantidadsolicitada: cantidadSolicitada
         });
 

@@ -19,6 +19,18 @@ const Productos = db.define('productos', {
         type: DataTypes.STRING,
         allowNull: true,
     },
+    modeloproducto: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    estadoproducto: {
+        type: DataTypes.ENUM,
+        allowNull: true,
+    },
+    fechaaltaproducto: {
+        type: DataTypes.DATE,
+        allowNull: true,
+    }
 }, {
     timestamps: false,
 });

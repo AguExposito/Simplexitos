@@ -14,6 +14,9 @@ const venta = db.define('ventas',{
     preciototal: {
         type: DataTypes.FLOAT,
     },
+    fechaaltaventa:{
+        type: DataTypes.DATE
+    }
 },
 {
     timestamps:false,

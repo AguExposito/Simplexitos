@@ -7,6 +7,7 @@ const ordencompra = db.define('ordencompra',
     {
         idorden: {type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true, references: {model: 'ordencompra', key: 'idorden',},},
         estadoorden: {type: DataTypes.STRING},
+        descripcionordendecompra: {type: DataTypes.STRING},
         fechaorden: {type: DataTypes.DATE},
         cantidadsolicitada: {type: DataTypes.INTEGER}
     },
