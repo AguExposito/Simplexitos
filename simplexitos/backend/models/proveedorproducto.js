@@ -26,10 +26,10 @@ const proveedorproducto = db.define('proveedorproducto',
 )
 
 proveedorproducto.belongsTo(productos,{
-    foreignKey: 'idproductos'
+    foreignKey: 'idproducto'
 })
 productos.hasMany(proveedorproducto,{
-    foreignKey: 'idproductos'
+    foreignKey: 'idproducto'
 })
 
 proveedorproducto.belongsTo(proveedores,{

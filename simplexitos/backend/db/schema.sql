@@ -29,7 +29,7 @@ CREATE TABLE proveedor_producto (
   preciounitario                DOUBLE PRECISION NOT NULL,
   tiempoenvio                   INT NOT NULL,          
   costoalmacenamiento           DOUBLE PRECISION,
-  UNIQUE (id_producto, id_proveedor)
+  UNIQUE (idproducto, idproveedor)
 );
 
 CREATE TABLE inventario (

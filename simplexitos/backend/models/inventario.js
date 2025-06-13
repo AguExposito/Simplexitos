@@ -34,11 +34,11 @@ const inventario = db.define('inventario',
 )
 
 inventario.belongsTo(productos,{
-    foreignKey: 'idproductos'
+    foreignKey: 'idproducto'
 })
 
 productos.hasMany(inventario,{
-    foreignKey: 'idproductos'
+    foreignKey: 'idproducto'
 })
 
 export default inventario

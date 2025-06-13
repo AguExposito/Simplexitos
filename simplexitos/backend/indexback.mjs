@@ -1,7 +1,7 @@
 import cors from 'cors'
 import express from 'express';
 import db from './db/connection.js';
-import inventarioRoute from './routes/inventarioRoute.js';
+import inventarioRoute from './routes/inventarioRoute.mjs';
 
 
 
