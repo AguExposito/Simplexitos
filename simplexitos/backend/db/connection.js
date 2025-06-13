@@ -3,15 +3,19 @@ import dotenv from 'dotenv'
 
 dotenv.config()
 
+// DB_NAME=iwrvrarh DB_USERNAME=dkhudzce DB_PASSWORD=thottqfohndqqgtavyqg DB_HOSTNAME=alpha.mkdb.sh DB_DIALECT=postgres DATABASE_URL=postgresql://dkhudzce:thottqfohndqqgtavyqg@alpha.mkdb.sh:5432/iwrvrarh
+
+
 const db = new Sequelize(
-    process.env.DB_NAME, // DB Name
-    process.env.DB_USERNAME, // User Name
-    process.env.DB_PASSWORD, // Password
+    'iwrvrarh', // DB Name
+    'dkhudzce', // User Name
+    'thottqfohndqqgtavyqg', // Password
     {
-        host: process.env.DB_HOSTNAME,
-        dialect: process.env.DB_DIALECT,
-        logging: true 
+        host: 'alpha.mkdb.sh',
+        dialect: 'postgres',
+        logging: false 
     }
 )
 
 export default db
+

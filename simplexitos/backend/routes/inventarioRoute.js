@@ -8,9 +8,9 @@ inventarioRoute.get('/inventario/:idinventario', getInventario);
 
 //Ruta para realizar inventario y actualizarlo en la base de datos
 inventarioRoute.put('/inventario', async (req, res) => {
-    const { idInventario, idproducto, modeloInventario, idProveedor } = req.body;
+    const { idinventario, idproducto, modeloinventario, idproveedor } = req.body;
     try {
-        await inventarioFuncion(idInventario, idproducto, modeloInventario, idProveedor);
+        await inventarioFuncion(idinventario, idproducto, modeloinventario, idproveedor);
         res.status(200).send('Actualización de inventario completada correctamente.');
     } catch (error) {
         console.error('Error en la ruta de inventario:', error);

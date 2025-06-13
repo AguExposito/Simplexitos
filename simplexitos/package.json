@@ -2,14 +2,14 @@
   "name": "simplexitos",
   "version": "1.0.0",
   "description": "Sistema de inventario para la materia Investigación Operativa",
-   "main": "indexback.js",
+  "main": "indexback.js",
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node indexback.mjs",
     "dev": "nodemon indexback.mjs"
   },
-  "proxy":"http://localhost:1234",
+  "proxy": "http://localhost:1234",
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -20,10 +20,10 @@
     "express": "^4.19.2",
     "pg": "^8.11.5",
     "pg-hstore": "^2.3.4",
+    "react-router-dom": "^7.6.2",
     "sequelize": "^6.37.3"
   },
   "devDependencies": {
     "nodemon": "^3.1.3"
   }
-  
 }

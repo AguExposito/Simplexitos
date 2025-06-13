@@ -1,7 +1,7 @@
 import { DataTypes } from 'sequelize';
 import db from '../db/connection.js';
 
-const Productos = db.define('productos', {
+const productos = db.define('productos', {
     idproductos: {
         type: DataTypes.INTEGER,
         primaryKey: true,
@@ -23,10 +23,10 @@ const Productos = db.define('productos', {
         type: DataTypes.STRING,
         allowNull: true,
     },
-    estadoproducto: {
-        type: DataTypes.ENUM,
-        allowNull: true,
-    },
+    // estadoproducto: {
+    //     type: DataTypes.ENUM,
+    //     allowNull: true,
+    // },
     fechaaltaproducto: {
         type: DataTypes.DATE,
         allowNull: true,

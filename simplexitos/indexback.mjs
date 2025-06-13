@@ -1,13 +1,8 @@
 import cors from 'cors'
 import express from 'express';
 import db from './backend/db/connection.js';
-import productoRoute from './backend/routes/productosRoute.js';
-import proveedorRoute from './backend/routes/proveedorRoute.js';
 import inventarioRoute from './backend/routes/inventarioRoute.js';
-import ventaRoute from './backend/routes/ventaRoute.js';
-import ordenCompraRoute from './backend/routes/ordenCompraRoute.js';
-import proveedorproductoRoute from './backend/routes/proveedorproductoRoute.js';
-// import errorRoute from './backend/routes/errorRoute.js';
+
 
 
 
@@ -24,19 +19,15 @@ app.use(cors({
 
 app.use(express.json());
 
-const html = '<h1>Bienvenidos a la gestion de inventarios</h1>';
+const html = '<h1>Bienvenidos a la gestión de inventarios</h1>';
 
 app.get('/', (req,res) => {
     res.status(200).send(html)
 });
 
-app.use('/', productoRoute);
-app.use('/', proveedorRoute);
+
 app.use('/', inventarioRoute);
-app.use ('/', ventaRoute);
-app.use('/', ordenCompraRoute);
-app.use('/', proveedorproductoRoute);
-app.use('/', errorRoute)
+
 
 
 
