@@ -1,0 +1,72 @@
+/* Navbar.css */
+
+.navbar {
+    background-color: #B1C9EF;
+    padding: 1rem;
+    position: sticky;
+    top: 0;
+    width: 100%;
+    z-index: 1000;
+    box-shadow: 0 3px 4px #8AAEE0; /* Añadir sombra sutil */
+    margin-bottom: 20px; 
+}
+
+.navbar-list {
+    list-style: none;
+    display: flex;
+    justify-content: space-around;
+    align-items: center; 
+    margin: 0;
+    padding: 0;
+}
+
+.navbar-item {
+    margin: 0;
+}
+
+.navbar-link {
+    color: #0e0d0d;
+    text-decoration: none;
+    font-size: 1,5rem; /* Reducir el tamaño de la fuente a la mitad */
+    padding: 0.5rem 1rem;
+    transition: background-color 0.3s ease;
+    text-align: center; /* Centrar el texto dentro del enlace */
+}
+
+.navbar-link:hover {
+    background-color: #638ECB; /* Cambiar a un color de fondo ligeramente más oscuro al pasar el mouse */
+    border-radius: 5px;
+    transform: scale(1.05); /* Efecto de zoom al pasar el mouse */
+   
+}
+
+/* App.css */
+
+.App {
+    padding: 20px; /* Agregar padding general a toda la aplicación */
+    margin-top: 20px; /* Separación hacia arriba para evitar intersección con el Navbar */
+}
+
+.App-header {
+    background-color: #125aeb;
+    padding: 20px;
+    color: rgb(102, 204, 127);
+    text-align: center;
+    margin-bottom: 20px; 
+}
+
+h1 {
+    font-size: 2em;
+    margin-bottom: 0;
+}
+
+ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+li {
+    background: #B1C9EF;
+    margin: 20px 0;
+    padding: 5px;
+}
