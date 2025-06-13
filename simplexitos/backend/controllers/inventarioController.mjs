@@ -1,6 +1,7 @@
 import readline from 'readline';
 import inventario from "../models/inventario.js";
 import proveedorproducto from "../models/proveedorproducto.js";
+import producto from "../models/producto.js";
 
 
 // Traer el inventario por el id
@@ -312,5 +313,53 @@ export const inventarioFuncion = async (idinventario, idproducto, modeloinventar
         };
     } catch (error) {
         throw new Error(`Error en la función de inventario: ${error.message}`);
+    }
+};
+
+// Función para crear un nuevo inventario
+export const crearInventario = async (req, res) => {
+    try {
+        const {
+            idproducto,
+            stock,
+            demanda,
+            puntopedido,
+            stockseguridad,
+            loteoptimo,
+            modeloinventario
+        } = req.body;
+
+        // Validar que el producto exista
+        const producto = await producto.findOne({
+            where: { idproducto }
+        });
+
+        if (!producto) {
+            return res.status(404).json({ error: 'El producto especificado no existe' });
+        }
+
+        // Crear el nuevo inventario
+        const nuevoInventario = await inventario.create({
+            idproducto,
+            stock,
+            demanda,
+            puntopedido,
+            stockseguridad,
+            loteoptimo,
+            modeloinventario,
+            costoalmacenamiento: 0,
+            costocompra: 0,
+            costopedido: 0,
+            cgi: 0,
+            frecuenciadereabastecimiento: 0
+        });
+
+        res.status(201).json({
+            message: 'Inventario creado exitosamente',
+            data: nuevoInventario
+        });
+    } catch (error) {
+        console.error('Error al crear el inventario:', error);
+        res.status(500).json({ error: error.message });
     }
 };

@@ -1,44 +1,60 @@
 import { DataTypes } from 'sequelize';
-import db from "../db/connection.js";
-import productos from "./productos.js";
+import db from '../db/connection.js';
 
-
-const inventario = db.define('inventario',
-    {
-        idinventario:{type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true, references: {model: 'inventario', key: 'idinventario',},},
-        stock: {type: DataTypes.INTEGER},
-        frecuenciadereabastecimiento: {type: DataTypes.INTEGER},
-        costocompra: {type: DataTypes.DOUBLE},
-        costopedido: {type: DataTypes.DOUBLE},
-        costoalmacenamiento: {type: DataTypes.DOUBLE},
-        demanda: {type: DataTypes.DOUBLE},
-        cgi: {type: DataTypes.DOUBLE},
-        loteoptimo: {type: DataTypes.DOUBLE},
-        stockseguridad: {type: DataTypes.DOUBLE},
-        puntopedido: {type: DataTypes.DOUBLE},
-        modeloinventario: {type: DataTypes.STRING}
+const inventario = db.define('inventario', {
+    idinventario: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
     },
-    {
-        timestamps: false,
-        tableName:'inventario',
-        defaultScope: {
-            attributes: { exclude: ['createdAt', 'updatedAt'] } // Excluir por defecto
-        },
-        scopes: {
-            withTimestamps: {
-                attributes: { include: ['createdAt', 'updatedAt'] } // Incluir si se especifica
-            }
+    idproducto: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: 'producto',
+            key: 'idproducto'
         }
     },
-    
-)
+    stock: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    demanda: {
+        type: DataTypes.DOUBLE
+    },
+    costoalmacenamiento: {
+        type: DataTypes.DOUBLE
+    },
+    costocompra: {
+        type: DataTypes.DOUBLE
+    },
+    costopedido: {
+        type: DataTypes.DOUBLE
+    },
+    puntopedido: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    stockseguridad: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    loteoptimo: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    modeloinventario: {
+        type: DataTypes.STRING(50)
+    },
+    cgi: {
+        type: DataTypes.DOUBLE
+    },
+    frecuenciadereabastecimiento: {
+        type: DataTypes.INTEGER
+    }
+}, {
+    tableName: 'inventario',
+    timestamps: false
+});
 
-inventario.belongsTo(productos,{
-    foreignKey: 'idproducto'
-})
-
-productos.hasMany(inventario,{
-    foreignKey: 'idproducto'
-})
-
-export default inventario
+export default inventario;

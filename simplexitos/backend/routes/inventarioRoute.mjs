@@ -1,10 +1,13 @@
 import express from 'express';
-import {  getInventario,  inventarioFuncion } from '../controllers/inventarioController.mjs';
+import { getInventario, inventarioFuncion, crearInventario } from '../controllers/inventarioController.mjs';
 
 const inventarioRoute = express.Router()
 
 //Ruta para consultar el inventario segun su id
-inventarioRoute.get('./inventario/:idinventario', getInventario);
+inventarioRoute.get('/inventario/:idinventario', getInventario);
+
+//Ruta para crear un nuevo inventario
+inventarioRoute.post('/inventario', crearInventario);
 
 //Ruta para realizar inventario y actualizarlo en la base de datos
 inventarioRoute.put('/inventario', async (req, res) => {
@@ -17,6 +20,5 @@ inventarioRoute.put('/inventario', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
-
 
 export default inventarioRoute;
