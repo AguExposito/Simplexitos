@@ -1,7 +1,6 @@
 import {DataTypes} from 'sequelize'
 import db from '../db/connection.js'
 import inventario from './inventario.js'
-import demandahistorica from './demanda.js'
 
 
 const venta = db.define('ventas',{
@@ -27,14 +26,6 @@ venta.belongsTo(inventario,{
 
 inventario.hasMany(venta,{
     foreignKey: 'idinventario',
-});
-
-venta.belongsTo(demandahistorica,{
-    foreignKey: 'iddemanda',
-});
-
-demandahistorica.hasMany(venta,{
-    foreignKey:'iddemanda',
 });
 
 export default venta

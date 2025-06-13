@@ -1,11 +1,11 @@
 import { DataTypes } from "sequelize";
 import db from "../db/connection.js";
-import Articulos from "./articulos.js";
+import productos from "./productos.js";
 import proveedores from "./proveedor.js"
 
-const proveedorarticulo = db.define('proveedorarticulo',
+const proveedorproducto = db.define('proveedorproducto',
     {
-        idproveedorarticulo:{type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true, references: {model: 'proveedorarticulo', key: 'idproveedorarticulo',},},
+        idproveedorproducto:{type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true, references: {model: 'proveedorproducto', key: 'idproveedorproducto',},},
         costopedido: {type: DataTypes.DOUBLE},
         costoalmacenamiento: {type: DataTypes.DOUBLE},
         preciounitario: {type: DataTypes.DOUBLE},
@@ -13,7 +13,7 @@ const proveedorarticulo = db.define('proveedorarticulo',
     },
     {
         timestamps: false,
-        tableName: 'proveedorarticulo',
+        tableName: 'proveedorproducto',
         defaultScope: {
             attributes: { exclude: ['createdAt', 'updatedAt'] } // Excluir por defecto
         },
@@ -25,19 +25,19 @@ const proveedorarticulo = db.define('proveedorarticulo',
     },
 )
 
-proveedorarticulo.belongsTo(Articulos,{
-    foreignKey: 'idarticulos'
+proveedorproducto.belongsTo(productos,{
+    foreignKey: 'idproductos'
 })
-Articulos.hasMany(proveedorarticulo,{
-    foreignKey: 'idarticulos'
+productos.hasMany(proveedorproducto,{
+    foreignKey: 'idproductos'
 })
 
-proveedorarticulo.belongsTo(proveedores,{
+proveedorproducto.belongsTo(proveedores,{
     foreignKey: 'idproveedor'
 })
 
-proveedores.hasMany(proveedorarticulo,{
+proveedores.hasMany(proveedorproducto,{
     foreignKey: 'idproveedor'
 })
 
-export default proveedorarticulo
+export default proveedorproducto
