@@ -3,7 +3,7 @@ import inventario from "../models/inventario.js";
 import proveedorproducto from "../models/proveedorproducto.js";
 
 
-// Funcion que te trae el inventario por el id
+// Traer el inventario por el id
 
     export const getInventario = async (req, res) => {
         const { idinventario } = req.params;
@@ -95,7 +95,7 @@ const solicitarConfirmacion = () => {
 };
 
 // Función para calcular el Lote Óptimo
-async function calcularLoteOptimo(idproducto) {
+async function calcularloteoptimo(idproducto) {
     try {
         const inventario = await inventario.findOne({
             where: { idinventario: idinventario }
@@ -109,18 +109,18 @@ async function calcularLoteOptimo(idproducto) {
         }
 
         const demanda = inventario.demanda;
-        const costoPedido = proveedor.costopedido;
-        const costoAlmacenamiento = proveedor.costoalmacenamiento;
-        const loteOptimo = Math.sqrt((2 * demanda * costoPedido) / costoAlmacenamiento);
+        const costopedido = proveedor.costopedido;
+        const costoalmacenamiento = proveedor.costoalmacenamiento;
+        const loteoptimo = Math.sqrt((2 * demanda * costopedido) / costoalmacenamiento);
 
-        return {loteOptimo, demanda};
+        return {loteoptimo, demanda};
     } catch (error) {
         throw new Error(`Error al calcular el Lote Óptimo: ${error.message}`);
     }
 }
 
 // Función para calcular el costo de compra
-async function calcularCostoCompra(idproducto, idproveedor, loteOptimo) {
+async function calcularcostocompra(idproducto, idproveedor, loteoptimo) {
     try {
         const proveedorproducto = await proveedorproducto.findOne({
             where: { idproductos: idproducto, idproveedor: idproveedor }
@@ -131,9 +131,9 @@ async function calcularCostoCompra(idproducto, idproveedor, loteOptimo) {
         }
 
         const preciounitario = proveedorproducto.preciounitario;
-        const costoCompra = preciounitario * loteOptimo;
+        const costocompra = preciounitario * loteoptimo;
 
-        return costoCompra;
+        return costocompra;
     } catch (error) {
         throw new Error(`Error al calcular el costo de compra: ${error.message}`);
     }
@@ -141,7 +141,7 @@ async function calcularCostoCompra(idproducto, idproveedor, loteOptimo) {
 
 //Funcion para calcular costo de almacenamiento 
 
-async function calcularCostoAlmacenamiento(idproducto, idproveedor, loteOptimo){
+async function calcularcostoalmacenamiento(idproducto, idproveedor, loteoptimo){
     try {
         const proveedorproducto = await proveedorproducto.findOne({
             where: {idproductos: idproducto, idproveedor: idproveedor}
@@ -151,9 +151,9 @@ async function calcularCostoAlmacenamiento(idproducto, idproveedor, loteOptimo){
         }
 
         const costalm1 = proveedorproducto.costoalmacenamiento;
-        const costoAlmacenamiento = costalm1 * (loteOptimo/2)
+        const costoalmacenamiento = costalm1 * (loteoptimo/2)
         
-        return costoAlmacenamiento;
+        return costoalmacenamiento;
     } catch (error) {
         throw new Error(`Error al calcular el costo de almacenamiento: ${error.message}`);
     }
@@ -161,7 +161,7 @@ async function calcularCostoAlmacenamiento(idproducto, idproveedor, loteOptimo){
 
 //Funcion para calcular el costo de pedido
 
-async function calcularCostoPedido(idproducto, idproveedor, loteOptimo, demanda){
+async function calcularcostopedido(idproducto, idproveedor, loteoptimo, demanda){
     try {
 
         const inventario = await inventario.findOne({
@@ -177,8 +177,8 @@ async function calcularCostoPedido(idproducto, idproveedor, loteOptimo, demanda)
             throw new Error('No se encontró proveedor para el artículo especificado');
         }
         
-        const costoPedido = proveedor.costopedido * (demanda / loteOptimo);
-        return costoPedido;
+        const costopedido = proveedor.costopedido * (demanda / loteoptimo);
+        return costopedido;
     } catch (error) {
         throw new Error(`Error al calcular el costo de almacenamiento: ${error.message}`);
     }
@@ -186,12 +186,12 @@ async function calcularCostoPedido(idproducto, idproveedor, loteOptimo, demanda)
 
 //Funcion para calcular CGI
 
-async function calcularCostoGeneralInventario(costoCompra, costoAlmacenamiento, costoPedido) {
+async function calcularcgi(costocompra, costoalmacenamiento, costopedido) {
     try {
         // Sumar los costos obtenidos
-        const costoGeneralInventario = costoCompra + costoAlmacenamiento + costoPedido;
+        const cgi = costocompra + costoalmacenamiento + costopedido;
 
-        return costoGeneralInventario;
+        return cgi;
     } catch (error) {
         throw new Error(`Error al calcular el costo general de inventario (CGI): ${error.message}`);
     }
@@ -241,7 +241,7 @@ async function calcularROP(idproducto, idproveedor) {
 }
 
 // Función para calcular el Stock de Seguridad (SS)
-async function calcularStockSeguridad(idproducto, idproveedor) {
+async function calcularstockseguridad(idproducto, idproveedor) {
     try {
         const proveedorproducto = await proveedorproducto.findOne({
             where: { idproductos: idproducto, idproveedor: idproveedor }
@@ -259,40 +259,119 @@ async function calcularStockSeguridad(idproducto, idproveedor) {
         const desviacionL = desviacionDemanda * Math.sqrt(tiempoEntregaProveedor);
 
         // Calcular el Stock de Seguridad (SS)
-        const stockSeguridad = z * desviacionL;
+        const stockseguridad = z * desviacionL;
 
-        return stockSeguridad;
+        return stockseguridad;
     } catch (error) {
         throw new Error(`Error al calcular el Stock de Seguridad (SS): ${error.message}`);
     }
 }
+
+
+export const inventarioFuncion = async () => {
+    try {
+        const idinventario = await solicitaridinventario();
+        const idproducto = await solicitaridproducto();
+        const modeloinventario = await solicitarmodeloinventario();
+        const idproveedor = await solicitaridproveedor();
+
+        if (!idinventario || !idproducto || !modeloinventario || !idproveedor) {
+            throw new Error('Debe proporcionar idinventario, idproducto, modeloinventario y idproveedor');
+        }
+
+        const { loteoptimo, demanda } = await calcularloteoptimo(idproducto);
+        console.log(`El lote óptimo es: ${loteoptimo}`);
+
+        let costocompra, costoalmacenamiento, costopedido, cgi, ROP, stockseguridad;
+
+        // Calcular costos comunes
+        costocompra = await calcularcostocompra(idproducto, idproveedor, loteoptimo);
+        console.log(`El costo de compra es: ${costocompra}`);
+
+        costoalmacenamiento = await calcularcostoalmacenamiento(idproducto, idproveedor, loteoptimo);
+        console.log(`El costo de almacenamiento es: ${costoalmacenamiento}`);
+
+        costopedido = await calcularcostopedido(idproducto, idproveedor, loteoptimo, demanda);
+        console.log(`El costo de pedido es: ${costopedido}`);
+
+        cgi = await calcularcgi(costocompra, costoalmacenamiento, costopedido);
+        console.log(`El costo general de inventario (CGI) es: ${cgi}`);
+
+        if (modeloinventario === 'Pedido Fijo') {
+            ROP = await calcularROP(idproducto, idproveedor);
+            console.log(`El Punto de Pedido (ROP) es: ${ROP}`);
+
+            stockseguridad = await calcularstockseguridad(idproducto, idproveedor);
+            console.log(`El Stock de Seguridad (SS) es: ${stockseguridad}`);
+        }
+
+        const confirmacion = await solicitarConfirmacion();
+        if (confirmacion) {
+            const updateData = {
+                loteoptimo: loteoptimo,
+                modeloinventario: modeloinventario,
+                costocompra: costocompra,
+                costopedido: costopedido,
+                costoalmacenamiento: costoalmacenamiento,
+                cgi: cgi
+            };
+
+            if (modeloinventario === 'Pedido Fijo') {
+                updateData.puntopedido = ROP;
+                updateData.stockseguridad = stockseguridad;
+            } else if (modeloinventario === 'Lote Fijo'){
+                updateData.puntopedido = null;
+                updateData.stockseguridad = null;
+            }
+
+            const [numRowsUpdated, [updatedInventario]] = await inventario.update(updateData, {
+                where: {
+                    idproductos: idproducto,
+                    idinventario: idinventario
+                },
+                returning: true
+            });
+
+            if (numRowsUpdated > 0) {
+                console.log(`¡Inventario actualizado correctamente para el artículo con ID ${idproducto}!`);
+                console.log('Datos actualizados:', updatedInventario.toJSON());
+            } else {
+                console.log(`No se encontró el artículo con ID ${idproducto} en el inventario.`);
+            }
+        } else {
+            console.log('No se realizó ninguna actualización en la base de datos.');
+        }
+    } catch (error) {
+        console.error('Error al calcular el inventario:', error.message);
+        throw new Error(`Error en la función de inventario: ${error.message}`);
+    }
 
 //Funcion para Inventario en el Front 
 
 export const inventarioFuncion = async (idinventario, idproducto, modeloinventario, idproveedor) => {
     try {
       // Lógica de cálculo y actualización de inventario
-      const { loteOptimo, demanda } = await calcularLoteOptimo(idproducto);
-      let costoCompra = await calcularCostoCompra(idproducto, idproveedor, loteOptimo);
-      let costoAlmacenamiento = await calcularCostoAlmacenamiento(idproducto, idproveedor, loteOptimo);
-      let costoPedido = await calcularCostoPedido(idproducto, idproveedor, loteOptimo, demanda);
-      let costoGeneralInventario = await calcularCostoGeneralInventario(costoCompra, costoAlmacenamiento, costoPedido);
+      const { loteoptimo, demanda } = await calcularloteoptimo(idproducto);
+      let costocompra = await calcularcostocompra(idproducto, idproveedor, loteoptimo);
+      let costoalmacenamiento = await calcularcostoalmacenamiento(idproducto, idproveedor, loteoptimo);
+      let costopedido = await calcularcostopedido(idproducto, idproveedor, loteoptimo, demanda);
+      let cgi = await calcularcgi(costocompra, costoalmacenamiento, costopedido);
   
-      let ROP, stockSeguridad;
+      let ROP, stockseguridad;
       if (modeloinventario === 'Pedido Fijo') {
         ROP = await calcularROP(idproducto, idproveedor);
-        stockSeguridad = await calcularStockSeguridad(idproducto, idproveedor);
+        stockseguridad = await calcularstockseguridad(idproducto, idproveedor);
       }
   
       const updateData = {
-        loteoptimo: loteOptimo,
+        loteoptimo: loteoptimo,
         modeloinventario: modeloinventario,
-        costocompra: costoCompra,
-        costopedido: costoPedido,
-        costoalmacenamiento: costoAlmacenamiento,
-        cgi: costoGeneralInventario,
+        costocompra: costocompra,
+        costopedido: costopedido,
+        costoalmacenamiento: costoalmacenamiento,
+        cgi: cgi,
         puntopedido: modeloinventario === 'Pedido Fijo' ? ROP : null,
-        stockseguridad: modeloinventario === 'Pedido Fijo' ? stockSeguridad : null
+        stockseguridad: modeloinventario === 'Pedido Fijo' ? stockseguridad : null
       };
   
       const [numRowsUpdated, [updatedInventario]] = await inventario.update(updateData, {
@@ -312,4 +391,4 @@ export const inventarioFuncion = async (idinventario, idproducto, modeloinventar
       throw new Error(`Error en la función de inventario: ${error.message}`);
     }
   };
-  
+}

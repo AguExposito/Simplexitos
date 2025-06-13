@@ -4,7 +4,7 @@ import {  getInventario,  inventarioFuncion } from '../controllers/inventarioCon
 const inventarioRoute = express.Router()
 
 //Ruta para consultar el inventario segun su id
-inventarioRoute.get('/inventario/:idinventario', getInventario);
+inventarioRoute.get('./inventario/:idinventario', getInventario);
 
 //Ruta para realizar inventario y actualizarlo en la base de datos
 inventarioRoute.put('/inventario', async (req, res) => {

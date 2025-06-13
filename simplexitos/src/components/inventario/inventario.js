@@ -14,16 +14,16 @@ const Inventario = () => {
     const [inventoryData, setInventoryData] = useState(null);
     const [searchError, setSearchError] = useState('');
     const [formData, setFormData] = useState({
-        idInventario: '',
-        idProducto: '',
-        cantidadEnStock: '',
-        demandaInventario: '',
-        costoDepositoInventario: '',
-        costoVenta: '',
-        costoPedido: '',
-        stockSeguridad: '',
-        modeloInventario: '',
-        frecuenciaDeReabastecimiento: ''
+        idinventario: '',
+        idproducto: '',
+        stock: '',
+        demanda: '',
+        costoalmacenamiento: '',
+        costocompra: '',
+        costopedido: '',
+        stockseguridad: '',
+        modeloinventario: '',
+        frecuenciadereabastecimiento: ''
     });
     const [calcMessage, setCalcMessage] = useState('');
     const [calcError, setCalcError] = useState('');
@@ -53,9 +53,10 @@ const Inventario = () => {
 
     const handleCalculate = async (e) => {
         e.preventDefault();
+        console.log(formData);
         try {
             await axios.put(`${serverFront}/inventario`, formData);
-            setCalcMessage(`Inventario con ID ${formData.idInventario} actualizado con éxito.`);
+            setCalcMessage(`Inventario con ID ${formData.idinventario} actualizado con éxito.`);
             setCalcError('');
         } catch (error) {
             setCalcError(error.response?.data?.error || 'Error al actualizar el inventario');
@@ -68,16 +69,16 @@ const Inventario = () => {
         setInventoryData(null);
         setSearchError('');
         setFormData({
-            idInventario: '',
-            idProducto: '',
-            cantidadEnStock: '',
-            demandaInventario: '',
-            costoDepositoInventario: '',
-            costoVenta: '',
-            costoPedido: '',
-            stockSeguridad: '',
-            modeloInventario: '',
-            frecuenciaDeReabastecimiento: ''
+            idinventario: '',
+            idproducto: '',
+            stock: '',
+            demanda: '',
+            costoalmacenamiento: '',
+            costocompra: '',
+            costopedido: '',
+            stockseguridad: '',
+            modeloinventario: '',
+            frecuenciadereabastecimiento: ''
         });
         setCalcMessage('');
         setCalcError('');
@@ -109,13 +110,13 @@ const Inventario = () => {
                                 <h3>Información del Inventario</h3>
                                 <p><strong>ID Inventario:</strong> {inventoryData.idinventario}</p>
                                 <p><strong>ID Producto:</strong> {inventoryData.idproducto}</p>
-                                <p><strong>Stock:</strong> {inventoryData.cantidadenstock}</p>
-                                <p><strong>Demanda:</strong> {inventoryData.demandainventario}</p>
+                                <p><strong>Stock:</strong> {inventoryData.stock}</p>
+                                <p><strong>Demanda:</strong> {inventoryData.demanda}</p>
                                 <p><strong>Modelo de Inventario:</strong> {inventoryData.modeloinventario}</p>
                                 <p><strong>Frecuencia de Reabastecimiento:</strong> {inventoryData.frecuenciadereabastecimiento}</p>
                                 <p><strong>Costo de Pedido:</strong> {inventoryData.costopedido}</p>
-                                <p><strong>Costo de Depósito:</strong> {inventoryData.costodepositoinventario}</p>
-                                <p><strong>Costo de Venta:</strong> {inventoryData.costoventa}</p>
+                                <p><strong>Costo de Depósito:</strong> {inventoryData.costoalmacenamiento}</p>
+                                <p><strong>Costo de Venta:</strong> {inventoryData.costocompra}</p>
                                 <p><strong>Stock de Seguridad:</strong> {inventoryData.stockseguridad}</p>
                                 <p><strong>Punto de Pedido:</strong> {inventoryData.puntopedido}</p>
                                 <p><strong>Lote Óptimo:</strong> {inventoryData.loteoptimo}</p>
@@ -128,16 +129,16 @@ const Inventario = () => {
                         <h2>Actualizar Inventario</h2>
                         <form onSubmit={handleCalculate}>
                             {[
-                                { name: "idInventario", label: "ID Inventario" },
-                                { name: "idProducto", label: "ID Producto" },
-                                { name: "cantidadEnStock", label: "Cantidad en Stock" },
-                                { name: "demandaInventario", label: "Demanda Inventario" },
-                                { name: "costoDepositoInventario", label: "Costo de Depósito" },
-                                { name: "costoVenta", label: "Costo de Venta" },
-                                { name: "costoPedido", label: "Costo de Pedido" },
-                                { name: "stockSeguridad", label: "Stock de Seguridad" },
-                                { name: "modeloInventario", label: "Modelo de Inventario" },
-                                { name: "frecuenciaDeReabastecimiento", label: "Frecuencia de Reabastecimiento" },
+                                { name: "idinventario", label: "ID Inventario" },
+                                { name: "idproducto", label: "ID Producto" },
+                                { name: "stock", label: "Cantidad en Stock" },
+                                { name: "demanda", label: "Demanda Inventario" },
+                                { name: "costoalmacenamiento", label: "Costo de Depósito" },
+                                { name: "costocompra", label: "Costo de Venta" },
+                                { name: "costopedido", label: "Costo de Pedido" },
+                                { name: "stockseguridad", label: "Stock de Seguridad" },
+                                { name: "modeloinventario", label: "Modelo de Inventario" },
+                                { name: "frecuenciadereabastecimiento", label: "Frecuencia de Reabastecimiento" },
                             ].map(({ name, label }) => (
                                 <input
                                     key={name}

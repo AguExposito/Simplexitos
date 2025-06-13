@@ -1,7 +1,7 @@
 import cors from 'cors'
 import express from 'express';
-import db from './backend/db/connection.js';
-import inventarioRoute from './backend/routes/inventarioRoute.js';
+import db from './db/connection.js';
+import inventarioRoute from './routes/inventarioRoute.js';
 
 
 
@@ -19,7 +19,7 @@ app.use(cors({
 
 app.use(express.json());
 
-const html = '<h1>Bienvenidos a la gestión de inventarios</h1>';
+const html = '<h1>corriendo aplicación - Investigación Operativa</h1>';
 
 app.get('/', (req,res) => {
     res.status(200).send(html)
