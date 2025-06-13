@@ -1,15 +1,13 @@
 import cors from 'cors'
 import express from 'express';
-import db from './db/connection.js';
-import articuloRoute from './routes/articulosRoute.js';
-import proveedorRoute from './routes/proveedorRoute.js';
-import inventarioRoute from './routes/inventarioRoute.js';
-import demandaRoute from './routes/demandaRoute.js';
-import ventaRoute from './routes/ventaRoute.js';
-import pronosticoRoute from './routes/pronosticoRoute.js';
-import ordenCompraRoute from './routes/ordenCompraRoute.js';
-import proveedorarticuloRoute from './routes/proveedorArticuloRoute.js';
-import errorRoute from './routes/errorRoute.js';
+import db from './backend/db/connection.js';
+import productoRoute from './backend/routes/productosRoute.js';
+import proveedorRoute from './backend/routes/proveedorRoute.js';
+import inventarioRoute from './backend/routes/inventarioRoute.js';
+import ventaRoute from './backend/routes/ventaRoute.js';
+import ordenCompraRoute from './backend/routes/ordenCompraRoute.js';
+import proveedorproductoRoute from './backend/routes/proveedorproductoRoute.js';
+// import errorRoute from './backend/routes/errorRoute.js';
 
 
 
@@ -32,14 +30,12 @@ app.get('/', (req,res) => {
     res.status(200).send(html)
 });
 
-app.use('/', articuloRoute);
+app.use('/', productoRoute);
 app.use('/', proveedorRoute);
 app.use('/', inventarioRoute);
-app.use('/', demandaRoute);
 app.use ('/', ventaRoute);
-app.use('/', pronosticoRoute);
 app.use('/', ordenCompraRoute);
-app.use('/', proveedorarticuloRoute);
+app.use('/', proveedorproductoRoute);
 app.use('/', errorRoute)
 
 
