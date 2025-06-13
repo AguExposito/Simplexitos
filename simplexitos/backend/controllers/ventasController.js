@@ -1,7 +1,6 @@
 import readline from 'readline'
 import ventas from "../models/ventas.js";
 import inventario from '../models/inventario.js';
-import demandahistorica from '../models/demanda.js';
 import proveedorproducto from '../models/proveedorproducto.js';
 
 //Funcion para mostrar todas las ventas
@@ -88,35 +87,20 @@ export const cargarVenta = async (req, res) => {
         // Calcular el precio de venta
         const precioVenta = cantidadVenta * (proveedorproducto.preciounitario + 0.3 * proveedorproducto.preciounitario);
 
-        // Obtener el próximo ID de demanda
-        const ultimaDemanda = await demandahistorica.findOne({ order: [['iddemanda', 'DESC']] });
-        const nuevoIdDemanda = ultimaDemanda ? ultimaDemanda.iddemanda + 1 : 1;
-
         // Actualizar el inventario
         inventarioAsociado.stock -= cantidadVenta;
         await inventarioAsociado.save();
-
-        // Crear una nueva demanda histórica
-        const nuevoPeriodo = 'Julio - 2024'; // Ajustar esto según sea necesario
-        const nuevaDemanda = await demandahistorica.create({
-            iddemanda: nuevoIdDemanda,
-            idinventario: inventarioAsociado.idinventario,
-            periodo: nuevoPeriodo,
-            demandareal: cantidadVenta
-        });
 
         // Crear la venta
         const nuevaVenta = await ventas.create({
             cantidadventa: cantidadVenta,
             preciototal: precioVenta,
-            idinventario: inventarioAsociado.idinventario,
-            iddemanda: nuevaDemanda.iddemanda
+            idinventario: inventarioAsociado.idinventario
         });
 
         res.status(200).json({
             message: 'Venta creada con éxito.',
-            venta: nuevaVenta.toJSON(),
-            demanda: nuevaDemanda.toJSON()
+            venta: nuevaVenta.toJSON()
         });
     } catch (error) {
         console.error('Error al cargar la venta:', error.message);

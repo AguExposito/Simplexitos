@@ -39,6 +39,7 @@ CREATE TABLE inventario (
     id_producto                     INT NOT NULL REFERENCES producto(id_producto),
     cantidadenstock                 INT NOT NULL,
     nombreinventario                VARCHAR(100),
+    demandainventario               DOUBLE PRECISION,
     costodepositoinventario         DOUBLE PRECISION,
     costoventa                      DOUBLE PRECISION,
     costopedido                     DOUBLE PRECISION,
