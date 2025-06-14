@@ -1,34 +1,38 @@
-import {DataTypes} from 'sequelize'
-import db from '../db/connection.js'
-import inventario from './inventario.js'
+import { DataTypes } from 'sequelize';
+import db from '../db/connection.js';
+import producto from './producto.js';
 
-
-const venta = db.define('ventas',{
-    idventa:{
-        type: DataTypes.INTEGER, 
-        primaryKey: true, autoIncrement: true, references: {model: 'venta', key:'idventa',},
+const venta = db.define('venta', {
+    idventa: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    idproducto: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: 'producto',
+            key: 'idproducto'
+        }
     },
     cantidadventa: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.INTEGER
     },
     preciototal: {
-        type: DataTypes.FLOAT,
+        type: DataTypes.DOUBLE
     },
-    fechaaltaventa:{
-        type: DataTypes.DATE
+    fechaaltaventa: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
     }
-},
-{
-    timestamps:false,
-    tableName:'venta',
-},
-)
-venta.belongsTo(inventario,{
-    foreignKey: 'idinventario',
+}, {
+    timestamps: false,
+    tableName: 'venta'
 });
 
-inventario.hasMany(venta,{
-    foreignKey: 'idinventario',
+venta.belongsTo(producto, {
+    foreignKey: 'idproducto'
 });
 
-export default venta
+export default venta;

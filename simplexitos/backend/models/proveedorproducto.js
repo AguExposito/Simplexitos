@@ -1,43 +1,63 @@
 import { DataTypes } from "sequelize";
 import db from "../db/connection.js";
-import productos from "./productos.js";
-import proveedores from "./proveedor.js"
+import proveedor from "./proveedor.js";
+import producto from "./producto.js";
 
-const proveedorproducto = db.define('proveedorproducto',
-    {
-        idproveedorproducto:{type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true, references: {model: 'proveedorproducto', key: 'idproveedorproducto',},},
-        costopedido: {type: DataTypes.DOUBLE},
-        costoalmacenamiento: {type: DataTypes.DOUBLE},
-        preciounitario: {type: DataTypes.DOUBLE},
-        tiempoenvio: {type: DataTypes.INTEGER}
+const proveedorproducto = db.define('proveedor_producto', {
+    idproveedorproducto: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
     },
-    {
-        timestamps: false,
-        tableName: 'proveedorproducto',
-        defaultScope: {
-            attributes: { exclude: ['createdAt', 'updatedAt'] } // Excluir por defecto
-        },
-        scopes: {
-            withTimestamps: {
-                attributes: { include: ['createdAt', 'updatedAt'] } // Incluir si se especifica
-            }
+    idproducto: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: 'producto',
+            key: 'idproducto'
         }
     },
-)
+    idproveedor: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: 'proveedor',
+            key: 'idproveedor'
+        }
+    },
+    costopedido: {
+        type: DataTypes.DOUBLE,
+        allowNull: false
+    },
+    costocompra: {
+        type: DataTypes.DOUBLE,
+        allowNull: false
+    },
+    preciounitario: {
+        type: DataTypes.DOUBLE,
+        allowNull: false
+    },
+    tiempoenvio: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    costoalmacenamiento: {
+        type: DataTypes.DOUBLE
+    },
+    frecuenciadereabastecimiento: {
+        type: DataTypes.INTEGER
+    }
+}, {
+    timestamps: false,
+    tableName: 'proveedor_producto'
+});
 
-proveedorproducto.belongsTo(productos,{
-    foreignKey: 'idproducto'
-})
-productos.hasMany(proveedorproducto,{
-    foreignKey: 'idproducto'
-})
-
-proveedorproducto.belongsTo(proveedores,{
+proveedorproducto.belongsTo(proveedor, {
     foreignKey: 'idproveedor'
-})
+});
 
-proveedores.hasMany(proveedorproducto,{
-    foreignKey: 'idproveedor'
-})
+proveedorproducto.belongsTo(producto, {
+    foreignKey: 'idproducto'
+});
 
-export default proveedorproducto
+export default proveedorproducto;

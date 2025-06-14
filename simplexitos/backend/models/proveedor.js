@@ -1,16 +1,31 @@
 import { DataTypes } from "sequelize";
 import db from "../db/connection.js";
 
-const proveedores = db.define('proveedores', {
-    idproveedor:{ type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true, references: {model: 'proveedores', key:'idproveedor',},},
-    cuit: {type: DataTypes.INTEGER},
-    nombreprove: {type: DataTypes.STRING},
-    localidad: {type: DataTypes.STRING},
-    fechaaltaproveedor: {type: DataTypes.DATE}
-},
-{
-    timestamps:false,
-    tableName:'proveedores',
+const proveedor = db.define('proveedor', {
+    idproveedor: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    nombreprove: {
+        type: DataTypes.STRING(100),
+        allowNull: false
+    },
+    cuit: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    localidad: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    fechaaltaproveedor: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    }
+}, {
+    timestamps: false,
+    tableName: 'proveedor'
 });
 
-export default proveedores;
+export default proveedor;

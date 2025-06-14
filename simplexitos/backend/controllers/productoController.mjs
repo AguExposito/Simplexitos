@@ -48,3 +48,24 @@ export const getProductos = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 }; 
+
+export const updateProducto = async (req, res) => {
+    const { id } = req.params;
+    const { codigoproducto, nombreproducto, descripcionproducto } = req.body;
+    try {
+        await productos.update({ codigoproducto, nombreproducto, descripcionproducto }, { where: { idproductos: id } });
+        res.json({ message: 'success' });
+    } catch (error) {
+        res.status(500).json({ error: 'Error al editar el producto' });
+    }
+};
+
+export const deleteProducto = async (req, res) => {
+    const { id } = req.params;
+    try {
+        await productos.destroy({ where: { idproductos: id } });
+        res.json({ message: 'success' });
+    } catch (error) {
+        res.status(500).json({ error: 'Error al eliminar el producto' });
+    }
+};
