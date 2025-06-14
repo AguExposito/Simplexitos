@@ -15,6 +15,8 @@ CREATE TABLE producto (
   nombreproducto                VARCHAR(100) NOT NULL,
   modeloproducto                VARCHAR(100),
   descripcionproducto           VARCHAR(300),
+  demanda                       DOUBLE PRECISION,
+  stockseguridad                INT NOT NULL,
   estadoproducto                estado_comun DEFAULT 'ACTIVO',
   fechaaltaproducto             DATE DEFAULT CURRENT_DATE,
   fechabajaproducto             DATE,
@@ -26,9 +28,11 @@ CREATE TABLE proveedor_producto (
   idproducto                    INT REFERENCES producto(idproducto),
   idproveedor                   INT REFERENCES proveedor(idproveedor),
   costopedido                   DOUBLE PRECISION NOT NULL,
+  costocompra                   DOUBLE PRECISION NOT NULL,
   preciounitario                DOUBLE PRECISION NOT NULL,
   tiempoenvio                   INT NOT NULL,          
   costoalmacenamiento           DOUBLE PRECISION,
+  frecuenciadereabastecimiento  INT,
   UNIQUE (idproducto, idproveedor)
 );
 
