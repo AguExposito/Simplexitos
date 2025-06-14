@@ -30,8 +30,10 @@ import {
   NumberIncrementStepper,
   NumberDecrementStepper,
   Textarea,
+  Container,
 } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
+import { API_BASE_URL } from '../config';
 
 export default function OrdenesCompra() {
   const [ordenes, setOrdenes] = useState([]);
@@ -55,10 +57,11 @@ export default function OrdenesCompra() {
 
   const fetchOrdenes = async () => {
     try {
-      const response = await fetch('http://localhost:3001/ordenes-compra');
+      const response = await fetch(`${API_BASE_URL}/ordenes-compra`);
       const data = await response.json();
-      setOrdenes(data);
+      setOrdenes(Array.isArray(data) ? data : []);
     } catch (error) {
+      console.error('Error fetching orders:', error);
       toast({
         title: 'Error',
         description: 'No se pudieron cargar las órdenes de compra',
@@ -71,10 +74,11 @@ export default function OrdenesCompra() {
 
   const fetchProveedores = async () => {
     try {
-      const response = await fetch('http://localhost:3001/proveedores');
+      const response = await fetch(`${API_BASE_URL}/proveedores`);
       const data = await response.json();
-      setProveedores(data);
+      setProveedores(Array.isArray(data) ? data : []);
     } catch (error) {
+      console.error('Error fetching providers:', error);
       toast({
         title: 'Error',
         description: 'No se pudieron cargar los proveedores',
@@ -87,10 +91,11 @@ export default function OrdenesCompra() {
 
   const fetchInventario = async () => {
     try {
-      const response = await fetch('http://localhost:3001/inventario');
+      const response = await fetch(`${API_BASE_URL}/inventario`);
       const data = await response.json();
-      setInventario(data);
+      setInventario(Array.isArray(data) ? data : []);
     } catch (error) {
+      console.error('Error fetching inventory:', error);
       toast({
         title: 'Error',
         description: 'No se pudieron cargar los productos del inventario',
@@ -112,7 +117,7 @@ export default function OrdenesCompra() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://localhost:3001/ordenes-compra', {
+      const response = await fetch(`${API_BASE_URL}/ordenes-compra`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -138,6 +143,7 @@ export default function OrdenesCompra() {
         });
       }
     } catch (error) {
+      console.error('Error creating order:', error);
       toast({
         title: 'Error',
         description: 'Hubo un error al crear la orden de compra',
@@ -155,133 +161,137 @@ export default function OrdenesCompra() {
 
   const getProductoNombre = (idinventario) => {
     const item = inventario.find(i => i.idinventario === idinventario);
-    return item ? `Producto ${item.idproducto}` : 'N/A';
+    return item ? item.producto?.nombreproducto || 'N/A' : 'N/A';
   };
 
   const getEstadoBadge = (estado) => {
-    const colorScheme = {
-      'ABIERTA': 'yellow',
-      'RECIBIDA': 'green',
-      'CANCELADA': 'red'
-    }[estado] || 'gray';
-
-    return (
-      <Badge colorScheme={colorScheme}>
-        {estado}
-      </Badge>
-    );
+    const estados = {
+      'ABIERTA': { color: 'yellow', text: 'Abierta' },
+      'RECIBIDA': { color: 'green', text: 'Recibida' },
+      'CANCELADA': { color: 'red', text: 'Cancelada' }
+    };
+    const estadoInfo = estados[estado] || { color: 'gray', text: estado };
+    return <Badge colorScheme={estadoInfo.color}>{estadoInfo.text}</Badge>;
   };
 
   return (
     <Box maxW="7xl" mx="auto" pt={5} px={{ base: 2, sm: 12, md: 17 }}>
-      <HStack justify="space-between" mb={6}>
-        <Heading>Órdenes de Compra</Heading>
-        <Button leftIcon={<AddIcon />} colorScheme="blue" onClick={onOpen}>
-          Nueva Orden
-        </Button>
-      </HStack>
+      <Container maxW="container.xl">
+        <HStack justify="space-between" mb={6}>
+          <Heading>Órdenes de Compra</Heading>
+          <Button leftIcon={<AddIcon />} colorScheme="blue" onClick={onOpen}>
+            Nueva Orden
+          </Button>
+        </HStack>
 
-      <Box overflowX="auto">
-        <Table variant="simple">
-          <Thead>
-            <Tr>
-              <Th>ID</Th>
-              <Th>Proveedor</Th>
-              <Th>Producto</Th>
-              <Th>Cantidad</Th>
-              <Th>Descripción</Th>
-              <Th>Estado</Th>
-              <Th>Fecha</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {ordenes.map((orden) => (
-              <Tr key={orden.idorden_compra}>
-                <Td>{orden.idorden_compra}</Td>
-                <Td>{getProveedorNombre(orden.idproveedor)}</Td>
-                <Td>{getProductoNombre(orden.idinventario)}</Td>
-                <Td>{orden.cantidadsolicitada}</Td>
-                <Td>{orden.descripcionordendecompra}</Td>
-                <Td>{getEstadoBadge(orden.estadoorden)}</Td>
-                <Td>{new Date(orden.fechaorden).toLocaleDateString()}</Td>
+        <Box overflowX="auto">
+          <Table variant="simple">
+            <Thead>
+              <Tr>
+                <Th>ID</Th>
+                <Th>Producto</Th>
+                <Th>Proveedor</Th>
+                <Th>Cantidad</Th>
+                <Th>Estado</Th>
+                <Th>Fecha</Th>
+                <Th>Descripción</Th>
               </Tr>
-            ))}
-          </Tbody>
-        </Table>
-      </Box>
+            </Thead>
+            <Tbody>
+              {ordenes.map((orden) => (
+                <Tr key={orden.idorden_compra}>
+                  <Td>{orden.idorden_compra}</Td>
+                  <Td>{getProductoNombre(orden.idinventario)}</Td>
+                  <Td>{getProveedorNombre(orden.idproveedor)}</Td>
+                  <Td>{orden.cantidadsolicitada}</Td>
+                  <Td>{getEstadoBadge(orden.estadoorden)}</Td>
+                  <Td>{new Date(orden.fechaorden).toLocaleDateString()}</Td>
+                  <Td>{orden.descripcionordendecompra || 'N/A'}</Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+        </Box>
 
-      <Modal isOpen={isOpen} onClose={onClose}>
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Nueva Orden de Compra</ModalHeader>
-          <ModalCloseButton />
-          <form onSubmit={handleSubmit}>
+        <Modal isOpen={isOpen} onClose={onClose}>
+          <ModalOverlay />
+          <ModalContent>
+            <ModalHeader>Nueva Orden de Compra</ModalHeader>
+            <ModalCloseButton />
             <ModalBody>
-              <FormControl isRequired mb={4}>
-                <FormLabel>Proveedor</FormLabel>
-                <Select
-                  name="idproveedor"
-                  value={formData.idproveedor}
-                  onChange={handleInputChange}
-                  placeholder="Seleccione un proveedor"
-                >
-                  {proveedores.map((proveedor) => (
-                    <option key={proveedor.idproveedor} value={proveedor.idproveedor}>
-                      {proveedor.nombreprove}
-                    </option>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl isRequired mb={4}>
-                <FormLabel>Producto</FormLabel>
-                <Select
-                  name="idinventario"
-                  value={formData.idinventario}
-                  onChange={handleInputChange}
-                  placeholder="Seleccione un producto"
-                >
-                  {inventario.map((item) => (
-                    <option key={item.idinventario} value={item.idinventario}>
-                      Producto {item.idproducto}
-                    </option>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl isRequired mb={4}>
-                <FormLabel>Cantidad</FormLabel>
-                <NumberInput
-                  min={1}
-                  value={formData.cantidadsolicitada}
-                  onChange={(value) => setFormData(prev => ({ ...prev, cantidadsolicitada: value }))}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-              </FormControl>
-              <FormControl>
-                <FormLabel>Descripción</FormLabel>
-                <Textarea
-                  name="descripcionordendecompra"
-                  value={formData.descripcionordendecompra}
-                  onChange={handleInputChange}
-                  placeholder="Ingrese una descripción de la orden"
-                />
-              </FormControl>
+              <form onSubmit={handleSubmit}>
+                <FormControl mb={4}>
+                  <FormLabel>Producto</FormLabel>
+                  <Select
+                    name="idinventario"
+                    value={formData.idinventario}
+                    onChange={handleInputChange}
+                    required
+                  >
+                    <option value="">Seleccione un producto</option>
+                    {inventario.map((item) => (
+                      <option key={item.idinventario} value={item.idinventario}>
+                        {item.producto?.nombreproducto || `Producto ${item.idinventario}`}
+                      </option>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <FormControl mb={4}>
+                  <FormLabel>Proveedor</FormLabel>
+                  <Select
+                    name="idproveedor"
+                    value={formData.idproveedor}
+                    onChange={handleInputChange}
+                    required
+                  >
+                    <option value="">Seleccione un proveedor</option>
+                    {proveedores.map((proveedor) => (
+                      <option key={proveedor.idproveedor} value={proveedor.idproveedor}>
+                        {proveedor.nombreprove}
+                      </option>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <FormControl mb={4}>
+                  <FormLabel>Cantidad</FormLabel>
+                  <NumberInput
+                    min={1}
+                    value={formData.cantidadsolicitada}
+                    onChange={(value) => setFormData(prev => ({ ...prev, cantidadsolicitada: value }))}
+                  >
+                    <NumberInputField />
+                    <NumberInputStepper>
+                      <NumberIncrementStepper />
+                      <NumberDecrementStepper />
+                    </NumberInputStepper>
+                  </NumberInput>
+                </FormControl>
+
+                <FormControl mb={4}>
+                  <FormLabel>Descripción</FormLabel>
+                  <Textarea
+                    name="descripcionordendecompra"
+                    value={formData.descripcionordendecompra}
+                    onChange={handleInputChange}
+                    placeholder="Descripción de la orden de compra"
+                  />
+                </FormControl>
+
+                <ModalFooter>
+                  <Button variant="ghost" mr={3} onClick={onClose}>
+                    Cancelar
+                  </Button>
+                  <Button colorScheme="blue" type="submit">
+                    Crear Orden
+                  </Button>
+                </ModalFooter>
+              </form>
             </ModalBody>
-            <ModalFooter>
-              <Button variant="ghost" mr={3} onClick={onClose}>
-                Cancelar
-              </Button>
-              <Button colorScheme="blue" type="submit">
-                Crear Orden
-              </Button>
-            </ModalFooter>
-          </form>
-        </ModalContent>
-      </Modal>
+          </ModalContent>
+        </Modal>
+      </Container>
     </Box>
   );
 } 

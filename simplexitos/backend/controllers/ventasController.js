@@ -239,7 +239,7 @@ export const cargarVenta = async (req, res) => {
 
     if (!idproducto || !cantidadventa) {
         return res.status(400).json({ error: 'Faltan datos requeridos' });
-    }
+        }
 
     try {
         // Verificar que el producto existe

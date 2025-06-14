@@ -14,6 +14,7 @@ import {
   Flex,
 } from '@chakra-ui/react';
 import { FaBox, FaTruck, FaShoppingCart, FaClipboardList } from 'react-icons/fa';
+import { API_BASE_URL } from '../config';
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -30,10 +31,10 @@ export default function Dashboard() {
   const fetchStats = async () => {
     try {
       const [productos, proveedores, ventas, ordenes] = await Promise.all([
-        fetch('http://localhost:3001/productos').then(res => res.json()),
-        fetch('http://localhost:3001/proveedores').then(res => res.json()),
-        fetch('http://localhost:3001/ventas').then(res => res.json()),
-        fetch('http://localhost:3001/ordenes-compra').then(res => res.json())
+        fetch(`${API_BASE_URL}/productos`).then(res => res.json()),
+        fetch(`${API_BASE_URL}/proveedores`).then(res => res.json()),
+        fetch(`${API_BASE_URL}/ventas`).then(res => res.json()),
+        fetch(`${API_BASE_URL}/ordenes-compra`).then(res => res.json())
       ]);
 
       setStats({

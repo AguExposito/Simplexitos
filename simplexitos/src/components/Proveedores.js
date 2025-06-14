@@ -24,6 +24,7 @@ import {
   HStack,
 } from '@chakra-ui/react';
 import { AddIcon, EditIcon, DeleteIcon } from '@chakra-ui/icons';
+import { API_BASE_URL } from '../config';
 
 export default function Proveedores() {
   const [proveedores, setProveedores] = useState([]);
@@ -43,7 +44,7 @@ export default function Proveedores() {
 
   const fetchProveedores = async () => {
     try {
-      const response = await fetch('http://localhost:3001/proveedores');
+      const response = await fetch(`${API_BASE_URL}/proveedores`);
       const data = await response.json();
       setProveedores(data);
     } catch (error) {
@@ -69,8 +70,8 @@ export default function Proveedores() {
     e.preventDefault();
     try {
       const url = selectedProveedor
-        ? `http://localhost:3001/proveedores/${selectedProveedor.idproveedor}`
-        : 'http://localhost:3001/proveedores';
+        ? `${API_BASE_URL}/proveedores/${selectedProveedor.idproveedor}`
+        : `${API_BASE_URL}/proveedores`;
       
       const method = selectedProveedor ? 'PUT' : 'POST';
       
@@ -117,7 +118,7 @@ export default function Proveedores() {
   const handleDelete = async (id) => {
     if (window.confirm('¿Está seguro de eliminar este proveedor?')) {
       try {
-        const response = await fetch(`http://localhost:3001/proveedores/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/proveedores/${id}`, {
           method: 'DELETE',
         });
 

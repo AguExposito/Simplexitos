@@ -1,12 +1,19 @@
 import express from 'express';
-import { crearProducto, getProductos } from '../controllers/productoController.mjs';
+import {
+  getProductos,
+  getProductoById,
+  createProducto,
+  updateProducto,
+  deleteProducto
+} from '../controllers/productoController.mjs';
 
 const productoRoute = express.Router();
 
-// Ruta para obtener todos los productos
+// Rutas de productos
 productoRoute.get('/productos', getProductos);
-
-// Ruta para crear un nuevo producto
-productoRoute.post('/producto', crearProducto);
+productoRoute.get('/productos/:id', getProductoById);
+productoRoute.post('/productos', createProducto);
+productoRoute.put('/productos/:id', updateProducto);
+productoRoute.delete('/productos/:id', deleteProducto);
 
 export default productoRoute; 

@@ -1,71 +1,112 @@
-import producto from '../models/producto.js';
-
-export const crearProducto = async (req, res) => {
-    try {
-        const {
-            codproducto,
-            nombreproducto,
-            modeloproducto,
-            descripcionproducto
-        } = req.body;
-
-        // Verificar si ya existe un producto con el mismo código
-        const productoExistente = await producto.findOne({
-            where: { codproducto }
-        });
-
-        if (productoExistente) {
-            return res.status(400).json({ error: 'Ya existe un producto con este código' });
-        }
-
-        // Crear el nuevo producto
-        const nuevoProducto = await producto.create({
-            codproducto,
-            nombreproducto,
-            modeloproducto,
-            descripcionproducto,
-            estadoproducto: 'ACTIVO'
-        });
-
-        res.status(201).json({
-            message: 'Producto creado exitosamente',
-            data: nuevoProducto
-        });
-    } catch (error) {
-        console.error('Error al crear el producto:', error);
-        res.status(500).json({ error: error.message });
-    }
-};
+import { pool } from '../db/db.mjs';
 
 export const getProductos = async (req, res) => {
-    try {
-        const productos = await producto.findAll({
-            where: { estadoproducto: 'ACTIVO' }
-        });
-        res.status(200).json(productos);
-    } catch (error) {
-        console.error('Error al obtener los productos:', error);
-        res.status(500).json({ error: error.message });
+  try {
+    const result = await pool.query('SELECT * FROM producto ORDER BY idproducto');
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error al obtener productos:', error);
+    res.status(500).json({ error: 'Error al obtener productos' });
+  }
+};
+
+export const getProductoById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query('SELECT * FROM producto WHERE idproducto = $1', [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Producto no encontrado' });
     }
-}; 
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error al obtener producto:', error);
+    res.status(500).json({ error: 'Error al obtener producto' });
+  }
+};
+
+export const createProducto = async (req, res) => {
+  const {
+    codproducto,
+    nombreproducto,
+    modeloproducto,
+    descripcionproducto,
+    demanda,
+    stockseguridad
+  } = req.body;
+
+  try {
+    const result = await pool.query(
+      `INSERT INTO producto 
+       (codproducto, nombreproducto, modeloproducto, descripcionproducto, demanda, stockseguridad)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [codproducto, nombreproducto, modeloproducto, descripcionproducto, demanda, stockseguridad]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error al crear producto:', error);
+    res.status(500).json({ error: 'Error al crear producto' });
+  }
+};
 
 export const updateProducto = async (req, res) => {
-    const { id } = req.params;
-    const { codigoproducto, nombreproducto, descripcionproducto } = req.body;
-    try {
-        await productos.update({ codigoproducto, nombreproducto, descripcionproducto }, { where: { idproductos: id } });
-        res.json({ message: 'success' });
-    } catch (error) {
-        res.status(500).json({ error: 'Error al editar el producto' });
+  const { id } = req.params;
+  const {
+    codproducto,
+    nombreproducto,
+    modeloproducto,
+    descripcionproducto,
+    demanda,
+    stockseguridad,
+    estadoproducto
+  } = req.body;
+
+  try {
+    const result = await pool.query(
+      `UPDATE producto 
+       SET codproducto = COALESCE($1, codproducto),
+           nombreproducto = COALESCE($2, nombreproducto),
+           modeloproducto = COALESCE($3, modeloproducto),
+           descripcionproducto = COALESCE($4, descripcionproducto),
+           demanda = COALESCE($5, demanda),
+           stockseguridad = COALESCE($6, stockseguridad),
+           estadoproducto = COALESCE($7, estadoproducto),
+           fechamodificacionproducto = CURRENT_DATE
+       WHERE idproducto = $8
+       RETURNING *`,
+      [codproducto, nombreproducto, modeloproducto, descripcionproducto, demanda, stockseguridad, estadoproducto, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Producto no encontrado' });
     }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error al actualizar producto:', error);
+    res.status(500).json({ error: 'Error al actualizar producto' });
+  }
 };
 
 export const deleteProducto = async (req, res) => {
-    const { id } = req.params;
-    try {
-        await productos.destroy({ where: { idproductos: id } });
-        res.json({ message: 'success' });
-    } catch (error) {
-        res.status(500).json({ error: 'Error al eliminar el producto' });
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query(
+      'UPDATE producto SET estadoproducto = $1, fechabajaproducto = CURRENT_DATE WHERE idproducto = $2 RETURNING *',
+      ['INACTIVO', id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Producto no encontrado' });
     }
+
+    res.json({ message: 'Producto eliminado correctamente' });
+  } catch (error) {
+    console.error('Error al eliminar producto:', error);
+    res.status(500).json({ error: 'Error al eliminar producto' });
+  }
 };

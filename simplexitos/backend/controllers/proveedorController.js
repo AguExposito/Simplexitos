@@ -9,8 +9,8 @@ export async function getAllProveedores(req, res) {
     }
 }
 
-export async function createProveedor(req, res) {
-    try {
+    export async function createProveedor(req, res) {
+        try {
         const { nombreprove, cuit, localidad } = req.body;
 
         if (!nombreprove || !cuit || !localidad) {

@@ -3,9 +3,8 @@ import { createProducto, updateProducto, deleteProducto, getAllproductos } from 
 
 const ProductoRoute = Router();
 
-ProductoRoute.get('/Productos', getAllproductos);
-ProductoRoute.post('/crear-Producto', createProducto);
-ProductoRoute.put('/editar-Producto/:id', updateProducto);
-ProductoRoute.delete('/eliminar-Producto/:id', deleteProducto);
+ProductoRoute.get('/productos', getAllproductos);
+ProductoRoute.post('/productos', createProducto);
+ProductoRoute.delete('/productos/:id', deleteProducto);
 
 export default ProductoRoute;

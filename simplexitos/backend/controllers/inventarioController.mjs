@@ -2,29 +2,57 @@ import readline from 'readline';
 import inventario from "../models/inventario.js";
 import proveedorproducto from "../models/proveedorproducto.js";
 import producto from "../models/producto.js";
+import { pool } from '../db/db.mjs';
 
+// Obtener todo el inventario
+export const getAllInventario = async (req, res) => {
+    try {
+        const items = await inventario.findAll({
+            include: [{ model: producto }]
+        });
+        res.status(200).json(items);
+    } catch (error) {
+        console.error('Error al obtener el inventario:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
 
-// Traer el inventario por el id
+// Obtener inventario por ID
+export const getInventario = async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT i.*, p.nombreproducto 
+            FROM inventario i
+            LEFT JOIN producto p ON i.idproducto = p.idproducto
+            ORDER BY i.idinventario
+        `);
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Error al obtener inventario:', error);
+        res.status(500).json({ error: 'Error al obtener inventario' });
+    }
+};
 
-    export const getInventario = async (req, res) => {
-        const { idinventario } = req.params;
-    
-        try {
-            // Buscar el inventario por ID
-            const item = await inventario.findOne({ where: { idinventario } });
-    
-            // Verificar si el inventario existe
-            if (!item) {
-                return res.status(404).send(`No se encontró el inventario con ID ${idinventario}`);
-            }
-    
-            // Enviar el inventario encontrado como respuesta
-            res.status(200).json(item);
-        } catch (error) {
-            console.error('Error al obtener el inventario:', error);
-            res.status(500).send('Ocurrió un error al obtener el inventario.');
+export const getInventarioById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query(`
+            SELECT i.*, p.nombreproducto 
+            FROM inventario i
+            LEFT JOIN producto p ON i.idproducto = p.idproducto
+            WHERE i.idinventario = $1
+        `, [id]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Registro de inventario no encontrado' });
         }
-    };
+        
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error('Error al obtener registro de inventario:', error);
+        res.status(500).json({ error: 'Error al obtener registro de inventario' });
+    }
+};
 
 //Funcion para solicitar el idinventario
 const solicitaridinventario = () => {
@@ -316,50 +344,119 @@ export const inventarioFuncion = async (idinventario, idproducto, modeloinventar
     }
 };
 
-// Función para crear un nuevo inventario
-export const crearInventario = async (req, res) => {
+// Crear nuevo inventario
+export const createInventario = async (req, res) => {
+    const {
+        idproducto,
+        stock,
+        demanda,
+        costoalmacenamiento,
+        costocompra,
+        costopedido,
+        puntopedido,
+        stockseguridad,
+        loteoptimo,
+        modeloinventario,
+        cgi,
+        frecuenciadereabastecimiento
+    } = req.body;
+
     try {
-        const {
-            idproducto,
-            stock,
-            demanda,
-            puntopedido,
-            stockseguridad,
-            loteoptimo,
-            modeloinventario
-        } = req.body;
+        // Verificar que el producto existe
+        const productoCheck = await pool.query(
+            'SELECT * FROM producto WHERE idproducto = $1',
+            [idproducto]
+        );
 
-        // Validar que el producto exista
-        const producto = await producto.findOne({
-            where: { idproducto }
-        });
-
-        if (!producto) {
-            return res.status(404).json({ error: 'El producto especificado no existe' });
+        if (productoCheck.rows.length === 0) {
+            return res.status(400).json({ error: 'El producto no existe' });
         }
 
-        // Crear el nuevo inventario
-        const nuevoInventario = await inventario.create({
-            idproducto,
-            stock,
-            demanda,
-            puntopedido,
-            stockseguridad,
-            loteoptimo,
-            modeloinventario,
-            costoalmacenamiento: 0,
-            costocompra: 0,
-            costopedido: 0,
-            cgi: 0,
-            frecuenciadereabastecimiento: 0
-        });
+        const result = await pool.query(
+            `INSERT INTO inventario 
+             (idproducto, stock, demanda, costoalmacenamiento, costocompra, costopedido,
+              puntopedido, stockseguridad, loteoptimo, modeloinventario, cgi, frecuenciadereabastecimiento)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+             RETURNING *`,
+            [
+                idproducto, stock, demanda, costoalmacenamiento, costocompra, costopedido,
+                puntopedido, stockseguridad, loteoptimo, modeloinventario, cgi, frecuenciadereabastecimiento
+            ]
+        );
 
-        res.status(201).json({
-            message: 'Inventario creado exitosamente',
-            data: nuevoInventario
-        });
+        res.status(201).json(result.rows[0]);
     } catch (error) {
-        console.error('Error al crear el inventario:', error);
-        res.status(500).json({ error: error.message });
+        console.error('Error al crear registro de inventario:', error);
+        res.status(500).json({ error: 'Error al crear registro de inventario' });
+    }
+};
+
+export const updateInventario = async (req, res) => {
+    const { id } = req.params;
+    const {
+        stock,
+        demanda,
+        costoalmacenamiento,
+        costocompra,
+        costopedido,
+        puntopedido,
+        stockseguridad,
+        loteoptimo,
+        modeloinventario,
+        cgi,
+        frecuenciadereabastecimiento
+    } = req.body;
+
+    try {
+        const result = await pool.query(
+            `UPDATE inventario 
+             SET stock = COALESCE($1, stock),
+                 demanda = COALESCE($2, demanda),
+                 costoalmacenamiento = COALESCE($3, costoalmacenamiento),
+                 costocompra = COALESCE($4, costocompra),
+                 costopedido = COALESCE($5, costopedido),
+                 puntopedido = COALESCE($6, puntopedido),
+                 stockseguridad = COALESCE($7, stockseguridad),
+                 loteoptimo = COALESCE($8, loteoptimo),
+                 modeloinventario = COALESCE($9, modeloinventario),
+                 cgi = COALESCE($10, cgi),
+                 frecuenciadereabastecimiento = COALESCE($11, frecuenciadereabastecimiento)
+             WHERE idinventario = $12
+             RETURNING *`,
+            [
+                stock, demanda, costoalmacenamiento, costocompra, costopedido,
+                puntopedido, stockseguridad, loteoptimo, modeloinventario, cgi,
+                frecuenciadereabastecimiento, id
+            ]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Registro de inventario no encontrado' });
+        }
+
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error('Error al actualizar registro de inventario:', error);
+        res.status(500).json({ error: 'Error al actualizar registro de inventario' });
+    }
+};
+
+export const deleteInventario = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const result = await pool.query(
+            'DELETE FROM inventario WHERE idinventario = $1 RETURNING *',
+            [id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Registro de inventario no encontrado' });
+        }
+
+        res.json({ message: 'Registro de inventario eliminado correctamente' });
+    } catch (error) {
+        console.error('Error al eliminar registro de inventario:', error);
+        res.status(500).json({ error: 'Error al eliminar registro de inventario' });
     }
 };

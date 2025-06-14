@@ -26,6 +26,7 @@ import {
   Text,
 } from '@chakra-ui/react';
 import { AddIcon, EditIcon, DeleteIcon } from '@chakra-ui/icons';
+import { API_BASE_URL } from '../config';
 
 export default function Productos() {
   const [productos, setProductos] = useState([]);
@@ -47,7 +48,7 @@ export default function Productos() {
 
   const fetchProductos = async () => {
     try {
-      const response = await fetch('http://localhost:3001/productos');
+      const response = await fetch(`${API_BASE_URL}/productos`);
       const data = await response.json();
       setProductos(data);
     } catch (error) {
@@ -73,8 +74,8 @@ export default function Productos() {
     e.preventDefault();
     try {
       const url = selectedProducto
-        ? `http://localhost:3001/productos/${selectedProducto.idproducto}`
-        : 'http://localhost:3001/productos';
+        ? `${API_BASE_URL}/productos/${selectedProducto.idproducto}`
+        : `${API_BASE_URL}/productos`;
       
       const method = selectedProducto ? 'PUT' : 'POST';
       
@@ -123,7 +124,7 @@ export default function Productos() {
   const handleDelete = async (id) => {
     if (window.confirm('¿Está seguro de eliminar este producto?')) {
       try {
-        const response = await fetch(`http://localhost:3001/productos/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/productos/${id}`, {
           method: 'DELETE',
         });
 

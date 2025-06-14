@@ -30,6 +30,7 @@ import {
   NumberDecrementStepper,
 } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
+import { API_BASE_URL } from '../config';
 
 export default function Ventas() {
   const [ventas, setVentas] = useState([]);
@@ -49,7 +50,7 @@ export default function Ventas() {
 
   const fetchVentas = async () => {
     try {
-      const response = await fetch('http://localhost:3001/ventas');
+      const response = await fetch(`${API_BASE_URL}/ventas`);
       const data = await response.json();
       setVentas(data);
     } catch (error) {
@@ -65,7 +66,7 @@ export default function Ventas() {
 
   const fetchProductos = async () => {
     try {
-      const response = await fetch('http://localhost:3001/productos');
+      const response = await fetch(`${API_BASE_URL}/productos`);
       const data = await response.json();
       setProductos(data);
     } catch (error) {
@@ -90,7 +91,7 @@ export default function Ventas() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://localhost:3001/ventas', {
+      const response = await fetch(`${API_BASE_URL}/ventas`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
