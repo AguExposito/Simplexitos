@@ -50,10 +50,16 @@ export default function Ventas() {
 
   const fetchVentas = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/ventas`);
+      const response = await fetch(`${API_BASE_URL}/venta`);
+      if (!response.ok) {
+        console.error('Error HTTP:', response.status, response.statusText);
+        setVentas([]);
+        return;
+      }
       const data = await response.json();
-      setVentas(data);
+      setVentas(Array.isArray(data) ? data : []);
     } catch (error) {
+      console.error('Error fetching ventas:', error);
       toast({
         title: 'Error',
         description: 'No se pudieron cargar las ventas',
@@ -61,15 +67,22 @@ export default function Ventas() {
         duration: 3000,
         isClosable: true,
       });
+      setVentas([]);
     }
   };
 
   const fetchProductos = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/productos`);
+      const response = await fetch(`${API_BASE_URL}/producto`);
+      if (!response.ok) {
+        console.error('Error HTTP:', response.status, response.statusText);
+        setProductos([]);
+        return;
+      }
       const data = await response.json();
-      setProductos(data);
+      setProductos(Array.isArray(data) ? data : []);
     } catch (error) {
+      console.error('Error fetching productos:', error);
       toast({
         title: 'Error',
         description: 'No se pudieron cargar los productos',
@@ -77,6 +90,7 @@ export default function Ventas() {
         duration: 3000,
         isClosable: true,
       });
+      setProductos([]);
     }
   };
 
@@ -91,7 +105,7 @@ export default function Ventas() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`${API_BASE_URL}/ventas`, {
+      const response = await fetch(`${API_BASE_URL}/venta`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

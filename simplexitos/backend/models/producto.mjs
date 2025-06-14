@@ -1,5 +1,5 @@
 import { DataTypes } from 'sequelize';
-import db from '../db/connection.js';
+import db from '../db/connection.mjs';
 
 const producto = db.define('producto', {
     idproducto: {
@@ -17,7 +17,8 @@ const producto = db.define('producto', {
         allowNull: false
     },
     modeloproducto: {
-        type: DataTypes.STRING(100)
+        type: DataTypes.ENUM('LOTE_FIJO', 'PERIODO_FIJO'),
+        defaultValue: 'LOTE_FIJO'
     },
     descripcionproducto: {
         type: DataTypes.STRING(300)

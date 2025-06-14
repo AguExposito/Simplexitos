@@ -10,10 +10,10 @@ import {
 const productoRoute = express.Router();
 
 // Rutas de productos
-productoRoute.get('/productos', getProductos);
-productoRoute.get('/productos/:id', getProductoById);
-productoRoute.post('/productos', createProducto);
-productoRoute.put('/productos/:id', updateProducto);
-productoRoute.delete('/productos/:id', deleteProducto);
+productoRoute.get('/producto', getProductos);
+productoRoute.get('/producto/:id', getProductoById);
+productoRoute.post('/producto', createProducto);
+productoRoute.put('/producto/:id', updateProducto);
+productoRoute.delete('/producto/:id', deleteProducto);
 
 export default productoRoute; 

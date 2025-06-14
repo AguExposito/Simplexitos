@@ -44,10 +44,16 @@ export default function Proveedores() {
 
   const fetchProveedores = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/proveedores`);
+      const response = await fetch(`${API_BASE_URL}/proveedor`);
+      if (!response.ok) {
+        console.error('Error HTTP:', response.status, response.statusText);
+        setProveedores([]);
+        return;
+      }
       const data = await response.json();
-      setProveedores(data);
+      setProveedores(Array.isArray(data) ? data : []);
     } catch (error) {
+      console.error('Error fetching proveedores:', error);
       toast({
         title: 'Error',
         description: 'No se pudieron cargar los proveedores',
@@ -55,6 +61,7 @@ export default function Proveedores() {
         duration: 3000,
         isClosable: true,
       });
+      setProveedores([]);
     }
   };
 
@@ -70,8 +77,8 @@ export default function Proveedores() {
     e.preventDefault();
     try {
       const url = selectedProveedor
-        ? `${API_BASE_URL}/proveedores/${selectedProveedor.idproveedor}`
-        : `${API_BASE_URL}/proveedores`;
+        ? `${API_BASE_URL}/proveedor/${selectedProveedor.idproveedor}`
+        : `${API_BASE_URL}/proveedor`;
       
       const method = selectedProveedor ? 'PUT' : 'POST';
       
@@ -118,7 +125,7 @@ export default function Proveedores() {
   const handleDelete = async (id) => {
     if (window.confirm('¿Está seguro de eliminar este proveedor?')) {
       try {
-        const response = await fetch(`${API_BASE_URL}/proveedores/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/proveedor/${id}`, {
           method: 'DELETE',
         });
 

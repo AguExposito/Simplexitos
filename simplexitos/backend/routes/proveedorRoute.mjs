@@ -10,10 +10,10 @@ import {
 const proveedorRoute = express.Router();
 
 // Rutas de proveedores
-proveedorRoute.get('/proveedores', getProveedores);
-proveedorRoute.get('/proveedores/:id', getProveedorById);
-proveedorRoute.post('/proveedores', createProveedor);
-proveedorRoute.put('/proveedores/:id', updateProveedor);
-proveedorRoute.delete('/proveedores/:id', deleteProveedor);
+proveedorRoute.get('/proveedor', getProveedores);
+proveedorRoute.get('/proveedor/:id', getProveedorById);
+proveedorRoute.post('/proveedor', createProveedor);
+proveedorRoute.put('/proveedor/:id', updateProveedor);
+proveedorRoute.delete('/proveedor/:id', deleteProveedor);
 
 export default proveedorRoute; 

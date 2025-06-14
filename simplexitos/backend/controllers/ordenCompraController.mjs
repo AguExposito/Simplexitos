@@ -129,4 +129,87 @@ export const deleteOrdenCompra = async (req, res) => {
     console.error('Error al eliminar orden de compra:', error);
     res.status(500).json({ error: 'Error al eliminar orden de compra' });
   }
+};
+
+export const recibirOrdenCompra = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Verificar que la orden existe y está en estado ABIERTA
+    const ordenCheck = await pool.query(
+      'SELECT * FROM orden_compra WHERE idorden_compra = $1',
+      [id]
+    );
+
+    if (ordenCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Orden de compra no encontrada' });
+    }
+
+    if (ordenCheck.rows[0].estadoorden !== 'ABIERTA') {
+      return res.status(400).json({ error: 'La orden de compra no está en estado ABIERTA' });
+    }
+
+    // Actualizar el estado de la orden
+    const result = await pool.query(
+      `UPDATE orden_compra 
+       SET estadoorden = 'RECIBIDA'
+       WHERE idorden_compra = $1
+       RETURNING *`,
+      [id]
+    );
+
+    // Actualizar el stock en el inventario
+    const orden = result.rows[0];
+    await pool.query(
+      `UPDATE inventario
+       SET stock = stock + $1
+       WHERE idinventario = $2`,
+      [orden.cantidadsolicitada, orden.idinventario]
+    );
+
+    res.json({
+      message: 'Orden de compra recibida correctamente',
+      data: orden
+    });
+  } catch (error) {
+    console.error('Error al recibir orden de compra:', error);
+    res.status(500).json({ error: 'Error al recibir orden de compra' });
+  }
+};
+
+export const cancelarOrdenCompra = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Verificar que la orden existe y no está ya cancelada
+    const ordenCheck = await pool.query(
+      'SELECT * FROM orden_compra WHERE idorden_compra = $1',
+      [id]
+    );
+
+    if (ordenCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Orden de compra no encontrada' });
+    }
+
+    if (ordenCheck.rows[0].estadoorden === 'CANCELADA') {
+      return res.status(400).json({ error: 'La orden de compra ya está cancelada' });
+    }
+
+    // Actualizar el estado de la orden
+    const result = await pool.query(
+      `UPDATE orden_compra 
+       SET estadoorden = 'CANCELADA'
+       WHERE idorden_compra = $1
+       RETURNING *`,
+      [id]
+    );
+
+    res.json({
+      message: 'Orden de compra cancelada correctamente',
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error al cancelar orden de compra:', error);
+    res.status(500).json({ error: 'Error al cancelar orden de compra' });
+  }
 }; 

@@ -10,10 +10,10 @@ import {
 const ventaRoute = express.Router();
 
 // Rutas de ventas
-ventaRoute.get('/ventas', getVentas);
-ventaRoute.get('/ventas/:id', getVentaById);
-ventaRoute.post('/ventas', createVenta);
-ventaRoute.put('/ventas/:id', updateVenta);
-ventaRoute.delete('/ventas/:id', deleteVenta);
+ventaRoute.get('/venta', getVentas);
+ventaRoute.get('/venta/:id', getVentaById);
+ventaRoute.post('/venta', createVenta);
+ventaRoute.put('/venta/:id', updateVenta);
+ventaRoute.delete('/venta/:id', deleteVenta);
 
 export default ventaRoute; 

@@ -1,5 +1,5 @@
 import { DataTypes } from "sequelize";
-import db from "../db/connection.js";
+import db from "../db/connection.mjs";
 
 const proveedor = db.define('proveedor', {
     idproveedor: {
@@ -28,4 +28,4 @@ const proveedor = db.define('proveedor', {
     tableName: 'proveedor'
 });
 
-export default proveedor;
+export default proveedor; 

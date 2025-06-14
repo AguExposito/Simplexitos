@@ -1,7 +1,7 @@
 import readline from 'readline';
-import inventario from "../models/inventario.js";
-import proveedorproducto from "../models/proveedorproducto.js";
-import producto from "../models/producto.js";
+import inventario from "../models/inventario.mjs";
+import proveedorproducto from "../models/proveedorproducto.mjs";
+import producto from "../models/producto.mjs";
 import { pool } from '../db/db.mjs';
 
 // Obtener todo el inventario

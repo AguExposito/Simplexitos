@@ -1,5 +1,6 @@
 CREATE TYPE estado_comun AS ENUM ('ACTIVO','INACTIVO');
 CREATE TYPE estado_oc    AS ENUM ('ABIERTA','RECIBIDA','CANCELADA');
+CREATE TYPE tipo_modelo  AS ENUM ('LOTE_FIJO','PERIODO_FIJO');
 
 CREATE TABLE proveedor (
   idproveedor                   SERIAL PRIMARY KEY,
@@ -13,7 +14,7 @@ CREATE TABLE producto (
   idproducto                    SERIAL PRIMARY KEY,
   codproducto                   INTEGER UNIQUE NOT NULL,
   nombreproducto                VARCHAR(100) NOT NULL,
-  modeloproducto                VARCHAR(100),
+  modeloproducto                tipo_modelo DEFAULT 'LOTE_FIJO',
   descripcionproducto           VARCHAR(300),
   demanda                       DOUBLE PRECISION,
   stockseguridad                INT NOT NULL,

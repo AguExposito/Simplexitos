@@ -2,8 +2,8 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import cors from 'cors';
-import db from './db/connection.js';
-import inventarioRoute from './routes/inventarioRoute.js';
+import db from './db/connection.mjs';
+import inventarioRoute from './routes/inventarioRoute.mjs';
 
 const app = express();
 const port = 3000;

@@ -1,5 +1,6 @@
 import { DataTypes } from 'sequelize';
-import db from '../db/connection.js';
+import db from '../db/connection.mjs';
+import producto from './producto.mjs';
 
 const inventario = db.define('inventario', {
     idinventario: {
@@ -53,8 +54,12 @@ const inventario = db.define('inventario', {
         type: DataTypes.INTEGER
     }
 }, {
-    tableName: 'inventario',
-    timestamps: false
+    timestamps: false,
+    tableName: 'inventario'
 });
 
-export default inventario;
+inventario.belongsTo(producto, {
+    foreignKey: 'idproducto'
+});
+
+export default inventario; 

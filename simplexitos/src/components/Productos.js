@@ -37,7 +37,7 @@ export default function Productos() {
   const [formData, setFormData] = useState({
     codproducto: '',
     nombreproducto: '',
-    modeloproducto: '',
+    modeloproducto: 'LOTE_FIJO',
     descripcionproducto: '',
     estadoproducto: 'ACTIVO'
   });
@@ -48,10 +48,16 @@ export default function Productos() {
 
   const fetchProductos = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/productos`);
+      const response = await fetch(`${API_BASE_URL}/producto`);
+      if (!response.ok) {
+        console.error('Error HTTP:', response.status, response.statusText);
+        setProductos([]);
+        return;
+      }
       const data = await response.json();
-      setProductos(data);
+      setProductos(Array.isArray(data) ? data : []);
     } catch (error) {
+      console.error('Error fetching productos:', error);
       toast({
         title: 'Error',
         description: 'No se pudieron cargar los productos',
@@ -59,6 +65,7 @@ export default function Productos() {
         duration: 3000,
         isClosable: true,
       });
+      setProductos([]);
     }
   };
 
@@ -74,8 +81,8 @@ export default function Productos() {
     e.preventDefault();
     try {
       const url = selectedProducto
-        ? `${API_BASE_URL}/productos/${selectedProducto.idproducto}`
-        : `${API_BASE_URL}/productos`;
+        ? `${API_BASE_URL}/producto/${selectedProducto.idproducto}`
+        : `${API_BASE_URL}/producto`;
       
       const method = selectedProducto ? 'PUT' : 'POST';
       
@@ -114,7 +121,7 @@ export default function Productos() {
     setFormData({
       codproducto: producto.codproducto,
       nombreproducto: producto.nombreproducto,
-      modeloproducto: producto.modeloproducto || '',
+      modeloproducto: producto.modeloproducto || 'LOTE_FIJO',
       descripcionproducto: producto.descripcionproducto || '',
       estadoproducto: producto.estadoproducto
     });
@@ -124,7 +131,7 @@ export default function Productos() {
   const handleDelete = async (id) => {
     if (window.confirm('¿Está seguro de eliminar este producto?')) {
       try {
-        const response = await fetch(`${API_BASE_URL}/productos/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/producto/${id}`, {
           method: 'DELETE',
         });
 
@@ -155,7 +162,7 @@ export default function Productos() {
     setFormData({
       codproducto: '',
       nombreproducto: '',
-      modeloproducto: '',
+      modeloproducto: 'LOTE_FIJO',
       descripcionproducto: '',
       estadoproducto: 'ACTIVO'
     });
@@ -241,11 +248,14 @@ export default function Productos() {
               </FormControl>
               <FormControl mb={4}>
                 <FormLabel>Modelo</FormLabel>
-                <Input
+                <Select
                   name="modeloproducto"
                   value={formData.modeloproducto}
                   onChange={handleInputChange}
-                />
+                >
+                  <option value="LOTE_FIJO">Lote Fijo</option>
+                  <option value="PERIODO_FIJO">Periodo Fijo</option>
+                </Select>
               </FormControl>
               <FormControl mb={4}>
                 <FormLabel>Descripción</FormLabel>

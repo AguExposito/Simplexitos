@@ -4,24 +4,20 @@ import {
   getOrdenCompraById,
   createOrdenCompra,
   updateOrdenCompra,
-  deleteOrdenCompra
+  deleteOrdenCompra,
+  recibirOrdenCompra,
+  cancelarOrdenCompra
 } from '../controllers/ordenCompraController.mjs';
 
 const ordenCompraRoute = express.Router();
 
-// Obtener todas las órdenes de compra
-ordenCompraRoute.get('/ordenes-compra', getOrdenesCompra);
-
-// Obtener una orden de compra por ID
-ordenCompraRoute.get('/ordenes-compra/:id', getOrdenCompraById);
-
-// Crear una nueva orden de compra
-ordenCompraRoute.post('/ordenes-compra', createOrdenCompra);
-
-// Actualizar una orden de compra
-ordenCompraRoute.put('/ordenes-compra/:id', updateOrdenCompra);
-
-// Eliminar una orden de compra
-ordenCompraRoute.delete('/ordenes-compra/:id', deleteOrdenCompra);
+// Rutas de órdenes de compra
+ordenCompraRoute.get('/orden-compra', getOrdenesCompra);
+ordenCompraRoute.get('/orden-compra/:id', getOrdenCompraById);
+ordenCompraRoute.post('/orden-compra', createOrdenCompra);
+ordenCompraRoute.put('/orden-compra/:id', updateOrdenCompra);
+ordenCompraRoute.delete('/orden-compra/:id', deleteOrdenCompra);
+ordenCompraRoute.put('/orden-compra/:id/recibir', recibirOrdenCompra);
+ordenCompraRoute.put('/orden-compra/:id/cancelar', cancelarOrdenCompra);
 
 export default ordenCompraRoute; 

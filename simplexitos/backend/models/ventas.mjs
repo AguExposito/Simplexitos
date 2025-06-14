@@ -1,6 +1,6 @@
 import { DataTypes } from 'sequelize';
-import db from '../db/connection.js';
-import producto from './producto.js';
+import db from '../db/connection.mjs';
+import producto from './producto.mjs';
 
 const venta = db.define('venta', {
     idventa: {
@@ -35,4 +35,4 @@ venta.belongsTo(producto, {
     foreignKey: 'idproducto'
 });
 
-export default venta;
+export default venta; 

@@ -30,12 +30,17 @@ export default function Dashboard() {
 
   const fetchStats = async () => {
     try {
-      const [productos, proveedores, ventas, ordenes] = await Promise.all([
+      const [productosRes, proveedoresRes, ventasRes, ordenesRes] = await Promise.all([
         fetch(`${API_BASE_URL}/productos`).then(res => res.json()),
         fetch(`${API_BASE_URL}/proveedores`).then(res => res.json()),
         fetch(`${API_BASE_URL}/ventas`).then(res => res.json()),
         fetch(`${API_BASE_URL}/ordenes-compra`).then(res => res.json())
       ]);
+      
+      const productos = Array.isArray(productosRes) ? productosRes : [];
+      const proveedores = Array.isArray(proveedoresRes) ? proveedoresRes : [];
+      const ventas = Array.isArray(ventasRes) ? ventasRes : [];
+      const ordenes = Array.isArray(ordenesRes) ? ordenesRes : [];
 
       setStats({
         totalProductos: productos.length,
@@ -45,6 +50,10 @@ export default function Dashboard() {
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
+      // En caso de error, mantener los valores actuales
+      setStats(prevStats => ({
+        ...prevStats
+      }));
     }
   };
 

@@ -1,7 +1,7 @@
 import { DataTypes } from "sequelize";
-import db from "../db/connection.js";
-import proveedor from "./proveedor.js";
-import producto from "./producto.js";
+import db from "../db/connection.mjs";
+import proveedor from "./proveedor.mjs";
+import producto from "./producto.mjs";
 
 const proveedorproducto = db.define('proveedor_producto', {
     idproveedorproducto: {
@@ -60,4 +60,4 @@ proveedorproducto.belongsTo(producto, {
     foreignKey: 'idproducto'
 });
 
-export default proveedorproducto;
+export default proveedorproducto; 
