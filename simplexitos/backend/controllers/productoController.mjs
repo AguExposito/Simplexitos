@@ -32,23 +32,24 @@ export const createProducto = async (req, res) => {
     nombreproducto,
     modeloproducto,
     descripcionproducto,
-    demanda,
-    stockseguridad
+    estadoproducto,
+    demanda = 0,  // Valor por defecto
+    stockseguridad = 0  // Valor por defecto
   } = req.body;
 
   try {
     const result = await pool.query(
       `INSERT INTO producto 
-       (codproducto, nombreproducto, modeloproducto, descripcionproducto, demanda, stockseguridad)
-       VALUES ($1, $2, $3, $4, $5, $6)
+       (codproducto, nombreproducto, modeloproducto, descripcionproducto, demanda, stockseguridad, estadoproducto)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [codproducto, nombreproducto, modeloproducto, descripcionproducto, demanda, stockseguridad]
+      [codproducto, nombreproducto, modeloproducto, descripcionproducto, demanda, stockseguridad, estadoproducto || 'ACTIVO']
     );
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Error al crear producto:', error);
-    res.status(500).json({ error: 'Error al crear producto' });
+    res.status(500).json({ error: 'Error al crear producto: ' + error.message });
   }
 };
 

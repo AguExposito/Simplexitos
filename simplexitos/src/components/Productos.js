@@ -39,7 +39,9 @@ export default function Productos() {
     nombreproducto: '',
     modeloproducto: 'LOTE_FIJO',
     descripcionproducto: '',
-    estadoproducto: 'ACTIVO'
+    estadoproducto: 'ACTIVO',
+    demanda: 0,
+    stockseguridad: 0
   });
 
   useEffect(() => {
@@ -123,7 +125,9 @@ export default function Productos() {
       nombreproducto: producto.nombreproducto,
       modeloproducto: producto.modeloproducto || 'LOTE_FIJO',
       descripcionproducto: producto.descripcionproducto || '',
-      estadoproducto: producto.estadoproducto
+      estadoproducto: producto.estadoproducto,
+      demanda: producto.demanda || 0,
+      stockseguridad: producto.stockseguridad || 0
     });
     onOpen();
   };
@@ -164,7 +168,9 @@ export default function Productos() {
       nombreproducto: '',
       modeloproducto: 'LOTE_FIJO',
       descripcionproducto: '',
-      estadoproducto: 'ACTIVO'
+      estadoproducto: 'ACTIVO',
+      demanda: 0,
+      stockseguridad: 0
     });
     onOpen();
   };
