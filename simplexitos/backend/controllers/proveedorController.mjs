@@ -74,18 +74,32 @@ export const deleteProveedor = async (req, res) => {
   const { id } = req.params;
 
   try {
+    // Iniciar transacción para asegurar consistencia
+    await pool.query('BEGIN');
+    
+    // Eliminar primero las relaciones en proveedor_producto
+    await pool.query('DELETE FROM proveedor_producto WHERE idproveedor = $1', [id]);
+    
+    // Luego eliminar el proveedor
     const result = await pool.query(
       'DELETE FROM proveedor WHERE idproveedor = $1 RETURNING *',
       [id]
     );
 
     if (result.rows.length === 0) {
+      await pool.query('ROLLBACK');
       return res.status(404).json({ error: 'Proveedor no encontrado' });
     }
 
+    // Confirmar la transacción
+    await pool.query('COMMIT');
+    
     res.json({ message: 'Proveedor eliminado correctamente' });
   } catch (error) {
+    // Revertir la transacción en caso de error
+    await pool.query('ROLLBACK');
+    
     console.error('Error al eliminar proveedor:', error);
-    res.status(500).json({ error: 'Error al eliminar proveedor' });
+    res.status(500).json({ error: 'Error al eliminar proveedor: ' + error.message });
   }
 }; 

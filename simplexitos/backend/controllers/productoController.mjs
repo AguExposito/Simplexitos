@@ -119,10 +119,33 @@ export const deleteProducto = async (req, res) => {
     // Iniciar una transacción
     await pool.query('BEGIN');
     
-    // Eliminar el inventario asociado al producto
+    // Eliminar registros relacionados en orden para evitar violaciones de clave foránea
+    
+    // 1. Eliminar registros de venta
+    await pool.query('DELETE FROM venta WHERE idproducto = $1', [id]);
+    
+    // 2. Obtener el ID del inventario asociado con este producto
+    const inventarioResult = await pool.query(
+      'SELECT idinventario FROM inventario WHERE idproducto = $1',
+      [id]
+    );
+    
+    const inventarioIds = inventarioResult.rows.map(row => row.idinventario);
+    
+    // 3. Eliminar órdenes de compra asociadas a los inventarios
+    if (inventarioIds.length > 0) {
+      await pool.query(
+        `DELETE FROM orden_compra WHERE idinventario IN (${inventarioIds.join(',')})`
+      );
+    }
+    
+    // 4. Eliminar el inventario asociado al producto
     await pool.query('DELETE FROM inventario WHERE idproducto = $1', [id]);
     
-    // Eliminar el producto (hard delete en vez de soft delete)
+    // 5. Eliminar relaciones producto-proveedor
+    await pool.query('DELETE FROM proveedor_producto WHERE idproducto = $1', [id]);
+    
+    // 6. Finalmente eliminar el producto
     const result = await pool.query(
       'DELETE FROM producto WHERE idproducto = $1 RETURNING *',
       [id]
@@ -137,7 +160,7 @@ export const deleteProducto = async (req, res) => {
     // Confirmar la transacción
     await pool.query('COMMIT');
 
-    res.json({ message: 'Producto y su inventario han sido eliminados correctamente' });
+    res.json({ message: 'Producto y sus registros relacionados han sido eliminados correctamente' });
   } catch (error) {
     // Revertir la transacción en caso de error
     await pool.query('ROLLBACK');
