@@ -3,14 +3,10 @@ import { pool } from '../db/db.mjs';
 export const getOrdenesCompra = async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT oc.*, 
-             i.idproducto,
-             p.nombreprove as nombre_proveedor,
-             pr.nombreproducto as nombre_producto
+      SELECT oc.*, i.idproducto, p.nombreproducto 
       FROM orden_compra oc
       JOIN inventario i ON oc.idinventario = i.idinventario
-      JOIN proveedor p ON oc.idproveedor = p.idproveedor
-      JOIN producto pr ON i.idproducto = pr.idproducto
+      JOIN producto p ON i.idproducto = p.idproducto
       ORDER BY oc.fechaorden DESC
     `);
     res.json(result.rows);

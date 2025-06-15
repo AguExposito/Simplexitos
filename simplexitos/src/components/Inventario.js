@@ -1,43 +1,57 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
+  Container,
+  Heading,
   Table,
   Thead,
   Tbody,
   Tr,
   Th,
   Td,
-  useToast,
-  Heading,
   Badge,
+  Button,
+  HStack,
   SimpleGrid,
   Stat,
   StatLabel,
   StatNumber,
   StatHelpText,
   StatArrow,
-  Container,
-  Button,
-  HStack,
+  useToast,
+  useDisclosure
 } from '@chakra-ui/react';
-import { EditIcon } from '@chakra-ui/icons';
+import { EditIcon, AddIcon } from '@chakra-ui/icons';
 import { API_BASE_URL } from '../config';
 import InventarioForm from './InventarioForm';
 
 export default function Inventario() {
   const [inventario, setInventario] = useState([]);
-  const [stats, setStats] = useState({
-    totalProductos: 0,
-    stockBajo: 0,
-    stockAlto: 0,
-    valorTotal: 0
-  });
+  const [productos, setProductos] = useState([]);
+  const [valorTotal, setValorTotal] = useState(null);
   const [selectedInventario, setSelectedInventario] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
+  const [formData, setFormData] = useState({
+    idproducto: '',
+    stock: 0,
+    demanda: 0,
+    costoalmacenamiento: 0,
+    costocompra: 0,
+    costopedido: 0,
+    puntopedido: 0,
+    stockseguridad: 0,
+    loteoptimo: 0,
+    modeloinventario: 'LOTE_FIJO',
+    cgi: 0,
+    frecuenciadereabastecimiento: 0
+  });
 
   useEffect(() => {
     fetchInventario();
+    fetchProductos();
+    fetchValorTotal();
   }, []);
 
   const fetchInventario = async () => {
@@ -45,24 +59,48 @@ export default function Inventario() {
       const response = await fetch(`${API_BASE_URL}/inventario`);
       const data = await response.json();
       setInventario(Array.isArray(data) ? data : []);
-      
-      // Calculate statistics
-      const totalProductos = data.length;
-      const stockBajo = data.filter(item => item.stock < item.stockseguridad).length;
-      const stockAlto = data.filter(item => item.stock > item.puntopedido).length;
-      const valorTotal = data.reduce((sum, item) => sum + (item.stock * item.costocompra), 0);
-
-      setStats({
-        totalProductos,
-        stockBajo,
-        stockAlto,
-        valorTotal
-      });
     } catch (error) {
       console.error('Error fetching inventory:', error);
       toast({
         title: 'Error',
-        description: 'No se pudo cargar el inventario',
+        description: 'No se pudieron cargar los datos del inventario',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const fetchProductos = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/producto`);
+      const data = await response.json();
+      setProductos(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudieron cargar los productos',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const fetchValorTotal = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/inventario/total`);
+      if (!response.ok) {
+        throw new Error('Error al obtener el valor total');
+      }
+      const data = await response.json();
+      setValorTotal(data);
+    } catch (error) {
+      console.error('Error fetching total value:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo obtener el valor total del inventario',
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -71,14 +109,12 @@ export default function Inventario() {
   };
 
   const getStockStatus = (stock, stockSeguridad, puntoPedido) => {
-    if (stock <= 0) {
-      return { color: 'red', text: 'Sin Stock' };
-    } else if (stock < stockSeguridad) {
-      return { color: 'orange', text: 'Stock Bajo' };
-    } else if (stock > puntoPedido) {
-      return { color: 'green', text: 'Stock Alto' };
+    if (stock <= stockSeguridad) {
+      return { color: 'red', text: 'Bajo' };
+    } else if (stock <= puntoPedido) {
+      return { color: 'yellow', text: 'Medio' };
     } else {
-      return { color: 'blue', text: 'Stock Normal' };
+      return { color: 'green', text: 'Óptimo' };
     }
   };
 
@@ -95,11 +131,13 @@ export default function Inventario() {
         <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={{ base: 5, lg: 8 }} mb={8}>
           <Stat>
             <StatLabel>Total Productos</StatLabel>
-            <StatNumber>{stats.totalProductos}</StatNumber>
+            <StatNumber>{valorTotal?.total_productos || 0}</StatNumber>
           </Stat>
           <Stat>
             <StatLabel>Stock Bajo</StatLabel>
-            <StatNumber>{stats.stockBajo}</StatNumber>
+            <StatNumber>
+              {inventario.filter(item => item.stock <= item.stockseguridad).length}
+            </StatNumber>
             <StatHelpText>
               <StatArrow type="decrease" />
               Necesitan reabastecimiento
@@ -107,7 +145,9 @@ export default function Inventario() {
           </Stat>
           <Stat>
             <StatLabel>Stock Alto</StatLabel>
-            <StatNumber>{stats.stockAlto}</StatNumber>
+            <StatNumber>
+              {inventario.filter(item => item.stock > item.puntopedido).length}
+            </StatNumber>
             <StatHelpText>
               <StatArrow type="increase" />
               Stock suficiente
@@ -115,7 +155,7 @@ export default function Inventario() {
           </Stat>
           <Stat>
             <StatLabel>Valor Total</StatLabel>
-            <StatNumber>${stats.valorTotal.toFixed(2)}</StatNumber>
+            <StatNumber>${valorTotal?.valor_total?.toFixed(2) || '0.00'}</StatNumber>
           </Stat>
         </SimpleGrid>
 
@@ -126,27 +166,26 @@ export default function Inventario() {
                 <Th>ID</Th>
                 <Th>Producto</Th>
                 <Th>Stock</Th>
-                <Th>Stock Seguridad</Th>
-                <Th>Punto Pedido</Th>
                 <Th>Estado</Th>
-                <Th>Modelo</Th>
+                <Th>Punto de Pedido</Th>
+                <Th>Stock Seguridad</Th>
                 <Th>Acciones</Th>
               </Tr>
             </Thead>
             <Tbody>
               {inventario.map((item) => {
                 const status = getStockStatus(item.stock, item.stockseguridad, item.puntopedido);
+                const producto = productos.find(p => p.idproducto === item.idproducto);
                 return (
                   <Tr key={item.idinventario}>
                     <Td>{item.idinventario}</Td>
-                    <Td>{item.nombreproducto || 'N/A'}</Td>
+                    <Td>{producto?.nombreproducto || 'N/A'}</Td>
                     <Td>{item.stock}</Td>
-                    <Td>{item.stockseguridad}</Td>
-                    <Td>{item.puntopedido}</Td>
                     <Td>
                       <Badge colorScheme={status.color}>{status.text}</Badge>
                     </Td>
-                    <Td>{item.modeloinventario || 'N/A'}</Td>
+                    <Td>{item.puntopedido}</Td>
+                    <Td>{item.stockseguridad}</Td>
                     <Td>
                       <Button
                         size="sm"
@@ -162,14 +201,14 @@ export default function Inventario() {
             </Tbody>
           </Table>
         </Box>
-      </Container>
 
-      <InventarioForm 
-        isOpen={isEditModalOpen} 
-        onClose={() => setIsEditModalOpen(false)} 
-        inventarioId={selectedInventario?.idinventario}
-        onInventarioUpdated={fetchInventario}
-      />
+        <InventarioForm 
+          isOpen={isEditModalOpen} 
+          onClose={() => setIsEditModalOpen(false)} 
+          inventarioId={selectedInventario?.idinventario}
+          onInventarioUpdated={fetchInventario}
+        />
+      </Container>
     </Box>
   );
 } 

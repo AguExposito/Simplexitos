@@ -488,3 +488,22 @@ export const updateInventarioByProducto = async (req, res) => {
     res.status(500).json({ error: 'Error al actualizar inventario por producto: ' + error.message });
   }
 };
+
+export const getValorTotalInventario = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        SUM(i.stock * COALESCE(pp.preciounitario, 0)) as valor_total,
+        COUNT(DISTINCT i.idproducto) as total_productos,
+        SUM(i.stock) as total_unidades
+      FROM inventario i
+      LEFT JOIN proveedor_producto pp ON i.idproducto = pp.idproducto
+      WHERE i.stock > 0
+    `);
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error al calcular valor total del inventario:', error);
+    res.status(500).json({ error: 'Error al calcular valor total del inventario' });
+  }
+};
