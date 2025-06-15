@@ -6,6 +6,7 @@ import proveedorRoute from './routes/proveedorRoute.mjs';
 import inventarioRoute from './routes/inventarioRoute.mjs';
 import ventaRoute from './routes/ventaRoute.mjs';
 import ordenCompraRoute from './routes/ordenCompraRoute.mjs';
+import proveedorProductoRoute from './routes/proveedorProductoRoute.mjs';
 
 dotenv.config();
 
@@ -27,6 +28,7 @@ app.use('/api', proveedorRoute);
 app.use('/api', inventarioRoute);
 app.use('/api', ventaRoute);
 app.use('/api', ordenCompraRoute);
+app.use('/api', proveedorProductoRoute);
 
 // Ruta de prueba para /api
 app.get('/api', (req, res) => {
