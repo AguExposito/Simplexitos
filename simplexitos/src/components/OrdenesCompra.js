@@ -117,7 +117,7 @@ export default function OrdenesCompra() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`${API_BASE_URL}/ordenes-compra`, {
+      const response = await fetch(`${API_BASE_URL}/orden-compra`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -141,12 +141,15 @@ export default function OrdenesCompra() {
           descripcionordendecompra: '',
           cantidadsolicitada: 1
         });
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al crear la orden de compra');
       }
     } catch (error) {
       console.error('Error creating order:', error);
       toast({
         title: 'Error',
-        description: 'Hubo un error al crear la orden de compra',
+        description: error.message || 'Hubo un error al crear la orden de compra',
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -174,14 +177,48 @@ export default function OrdenesCompra() {
     return <Badge colorScheme={estadoInfo.color}>{estadoInfo.text}</Badge>;
   };
 
+  const handleDeleteAll = async () => {
+    if (window.confirm('¿Está seguro de eliminar todo el historial de órdenes de compra? Esta acción no se puede deshacer.')) {
+      try {
+        const response = await fetch(`${API_BASE_URL}/orden-compra/all`, {
+          method: 'DELETE',
+        });
+
+        if (response.ok) {
+          toast({
+            title: 'Éxito',
+            description: 'Historial de órdenes de compra eliminado correctamente',
+            status: 'success',
+            duration: 3000,
+            isClosable: true,
+          });
+          fetchOrdenes();
+        }
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: 'Hubo un error al eliminar el historial de órdenes de compra',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+    }
+  };
+
   return (
     <Box maxW="7xl" mx="auto" pt={5} px={{ base: 2, sm: 12, md: 17 }}>
       <Container maxW="container.xl">
         <HStack justify="space-between" mb={6}>
           <Heading>Órdenes de Compra</Heading>
-          <Button leftIcon={<AddIcon />} colorScheme="blue" onClick={onOpen}>
-            Nueva Orden
-          </Button>
+          <HStack spacing={4}>
+            <Button colorScheme="red" onClick={handleDeleteAll}>
+              Eliminar Historial
+            </Button>
+            <Button leftIcon={<AddIcon />} colorScheme="blue" onClick={onOpen}>
+              Nueva Orden
+            </Button>
+          </HStack>
         </HStack>
 
         <Box overflowX="auto">

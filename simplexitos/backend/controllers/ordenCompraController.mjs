@@ -8,9 +8,9 @@ export const getOrdenesCompra = async (req, res) => {
              p.nombreprove as nombre_proveedor,
              pr.nombreproducto as nombre_producto
       FROM orden_compra oc
-      LEFT JOIN inventario i ON oc.idinventario = i.idinventario
-      LEFT JOIN proveedor p ON oc.idproveedor = p.idproveedor
-      LEFT JOIN producto pr ON i.idproducto = pr.idproducto
+      JOIN inventario i ON oc.idinventario = i.idinventario
+      JOIN proveedor p ON oc.idproveedor = p.idproveedor
+      JOIN producto pr ON i.idproducto = pr.idproducto
       ORDER BY oc.fechaorden DESC
     `);
     res.json(result.rows);
@@ -211,5 +211,31 @@ export const cancelarOrdenCompra = async (req, res) => {
   } catch (error) {
     console.error('Error al cancelar orden de compra:', error);
     res.status(500).json({ error: 'Error al cancelar orden de compra' });
+  }
+};
+
+export const deleteAllOrdenesCompra = async (req, res) => {
+  try {
+    // Iniciamos una transacción
+    await pool.query('BEGIN');
+
+    // Primero eliminamos todas las órdenes de compra
+    await pool.query('DELETE FROM orden_compra');
+
+    // Reiniciamos la secuencia
+    await pool.query('ALTER SEQUENCE orden_compra_idorden_compra_seq RESTART WITH 1');
+
+    // Confirmamos la transacción
+    await pool.query('COMMIT');
+
+    res.json({ message: 'Historial de órdenes de compra eliminado correctamente' });
+  } catch (error) {
+    // Si hay error, revertimos la transacción
+    await pool.query('ROLLBACK');
+    console.error('Error al eliminar historial de órdenes de compra:', error);
+    res.status(500).json({ 
+      error: 'Error al eliminar historial de órdenes de compra',
+      details: error.message 
+    });
   }
 }; 

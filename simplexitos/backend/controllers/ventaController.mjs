@@ -37,28 +37,59 @@ export const getVentaById = async (req, res) => {
 };
 
 export const createVenta = async (req, res) => {
-  const { idproducto, cantidadventa, preciototal } = req.body;
+  const { idproducto, cantidadventa } = req.body;
 
   try {
-    // Verificar que el producto existe
-    const productoCheck = await pool.query(
-      'SELECT * FROM producto WHERE idproducto = $1',
-      [idproducto]
-    );
+    // Iniciar transacción
+    await pool.query('BEGIN');
 
-    if (productoCheck.rows.length === 0) {
-      return res.status(400).json({ error: 'El producto no existe' });
+    // Verificar stock disponible
+    const inventarioCheck = await pool.query(`
+      SELECT i.*, p.preciounitario 
+      FROM inventario i
+      JOIN proveedor_producto p ON i.idproducto = p.idproducto
+      WHERE i.idproducto = $1
+      ORDER BY p.preciounitario ASC
+      LIMIT 1
+    `, [idproducto]);
+
+    if (inventarioCheck.rows.length === 0) {
+      await pool.query('ROLLBACK');
+      return res.status(400).json({ error: 'No hay inventario disponible para este producto' });
     }
 
-    const result = await pool.query(
+    const inventario = inventarioCheck.rows[0];
+    if (inventario.stock < cantidadventa) {
+      await pool.query('ROLLBACK');
+      return res.status(400).json({ error: 'Stock insuficiente' });
+    }
+
+    // Calcular precio total
+    const preciototal = cantidadventa * inventario.preciounitario;
+
+    // Crear la venta
+    const ventaResult = await pool.query(
       `INSERT INTO venta (idproducto, cantidadventa, preciototal, fechaaltaventa)
        VALUES ($1, $2, $3, CURRENT_DATE)
        RETURNING *`,
       [idproducto, cantidadventa, preciototal]
     );
 
-    res.status(201).json(result.rows[0]);
+    // Actualizar el stock
+    await pool.query(
+      `UPDATE inventario 
+       SET stock = stock - $1
+       WHERE idproducto = $2`,
+      [cantidadventa, idproducto]
+    );
+
+    // Confirmar transacción
+    await pool.query('COMMIT');
+
+    res.status(201).json(ventaResult.rows[0]);
   } catch (error) {
+    // Revertir transacción en caso de error
+    await pool.query('ROLLBACK');
     console.error('Error al crear venta:', error);
     res.status(500).json({ error: 'Error al crear venta' });
   }
@@ -106,5 +137,31 @@ export const deleteVenta = async (req, res) => {
   } catch (error) {
     console.error('Error al eliminar venta:', error);
     res.status(500).json({ error: 'Error al eliminar venta' });
+  }
+};
+
+export const deleteAllVentas = async (req, res) => {
+  try {
+    // Iniciamos una transacción
+    await pool.query('BEGIN');
+
+    // Primero eliminamos todas las ventas
+    await pool.query('DELETE FROM venta');
+
+    // Reiniciamos la secuencia
+    await pool.query('ALTER SEQUENCE venta_idventa_seq RESTART WITH 1');
+
+    // Confirmamos la transacción
+    await pool.query('COMMIT');
+
+    res.json({ message: 'Historial de ventas eliminado correctamente' });
+  } catch (error) {
+    // Si hay error, revertimos la transacción
+    await pool.query('ROLLBACK');
+    console.error('Error al eliminar historial de ventas:', error);
+    res.status(500).json({ 
+      error: 'Error al eliminar historial de ventas',
+      details: error.message 
+    });
   }
 }; 

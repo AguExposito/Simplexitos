@@ -4,15 +4,17 @@ import {
   getVentaById,
   createVenta,
   updateVenta,
-  deleteVenta
+  deleteVenta,
+  deleteAllVentas
 } from '../controllers/ventaController.mjs';
 
 const ventaRoute = express.Router();
 
 // Rutas de ventas
 ventaRoute.get('/venta', getVentas);
-ventaRoute.get('/venta/:id', getVentaById);
 ventaRoute.post('/venta', createVenta);
+ventaRoute.delete('/venta/all', deleteAllVentas);
+ventaRoute.get('/venta/:id', getVentaById);
 ventaRoute.put('/venta/:id', updateVenta);
 ventaRoute.delete('/venta/:id', deleteVenta);
 
