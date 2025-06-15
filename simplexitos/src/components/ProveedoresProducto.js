@@ -396,4 +396,4 @@ export default function ProveedoresProducto({ productoId, nombreProducto }) {
       </Modal>
     </Box>
   );
-}
+} 

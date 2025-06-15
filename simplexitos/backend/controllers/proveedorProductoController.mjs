@@ -111,4 +111,4 @@ export const deleteProveedorProducto = async (req, res) => {
     console.error('Error al eliminar relación:', error);
     res.status(500).json({ error: 'Error al eliminar relación: ' + error.message });
   }
-};
+}; 

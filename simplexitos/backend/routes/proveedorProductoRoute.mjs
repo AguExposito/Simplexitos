@@ -13,4 +13,4 @@ proveedorProductoRoute.post('/proveedor-producto', createProveedorProducto);
 proveedorProductoRoute.put('/proveedor-producto/:id', updateProveedorProducto);
 proveedorProductoRoute.delete('/proveedor-producto/:id', deleteProveedorProducto);
 
-export default proveedorProductoRoute;
+export default proveedorProductoRoute; 

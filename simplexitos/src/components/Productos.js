@@ -28,6 +28,7 @@ import {
 import { AddIcon, EditIcon, DeleteIcon } from '@chakra-ui/icons';
 import { API_BASE_URL } from '../config';
 import InventarioForm from './InventarioForm';
+import ProveedoresProducto from './ProveedoresProducto';
 
 export default function Productos() {
   const [productos, setProductos] = useState([]);
@@ -47,6 +48,9 @@ export default function Productos() {
 
   const [selectedProductForInventory, setSelectedProductForInventory] = useState(null);
   const [isInventoryModalOpen, setIsInventoryModalOpen] = useState(false);
+  const [showProveedores, setShowProveedores] = useState(false);
+  const [selectedProductForProveedores, setSelectedProductForProveedores] = useState(null);
+  const [isProveedoresModalOpen, setIsProveedoresModalOpen] = useState(false);
 
   useEffect(() => {
     fetchProductos();
@@ -184,6 +188,16 @@ export default function Productos() {
     setIsInventoryModalOpen(true);
   };
 
+  const handleDetailClick = (producto) => {
+    setSelectedProducto(producto);
+    setShowProveedores(true);
+  };
+
+  const handleProveedoresClick = (producto) => {
+    setSelectedProductForProveedores(producto);
+    setIsProveedoresModalOpen(true);
+  };
+
   return (
     <Box maxW="7xl" mx="auto" pt={5} px={{ base: 2, sm: 12, md: 17 }}>
       <HStack justify="space-between" mb={6}>
@@ -226,6 +240,13 @@ export default function Productos() {
                       onClick={() => handleInventarioClick(producto)}
                     >
                       Inventario
+                    </Button>
+                    <Button
+                      size="sm"
+                      colorScheme="teal"
+                      onClick={() => handleProveedoresClick(producto)}
+                    >
+                      Proveedores
                     </Button>
                     <Button
                       size="sm"
@@ -317,6 +338,31 @@ export default function Productos() {
         productId={selectedProductForInventory?.idproducto}
         onInventarioUpdated={fetchProductos}
       />
+
+      {showProveedores && selectedProducto && (
+        <Box mt={4}>
+          <ProveedoresProducto 
+            productoId={selectedProducto.idproducto}
+            nombreProducto={selectedProducto.nombreproducto}
+          />
+        </Box>
+      )}
+
+      {isProveedoresModalOpen && selectedProductForProveedores && (
+        <Modal isOpen={isProveedoresModalOpen} onClose={() => setIsProveedoresModalOpen(false)} size="xl">
+          <ModalOverlay />
+          <ModalContent>
+            <ModalHeader>Proveedores para {selectedProductForProveedores.nombreproducto}</ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              <ProveedoresProducto 
+                productoId={selectedProductForProveedores.idproducto}
+                nombreProducto={selectedProductForProveedores.nombreproducto}
+              />
+            </ModalBody>
+          </ModalContent>
+        </Modal>
+      )}
     </Box>
   );
 } 
