@@ -46,8 +46,6 @@ export default function Productos() {
     stockseguridad: 0
   });
 
-  const [selectedProductForInventory, setSelectedProductForInventory] = useState(null);
-  const [isInventoryModalOpen, setIsInventoryModalOpen] = useState(false);
   const [showProveedores, setShowProveedores] = useState(false);
   const [selectedProductForProveedores, setSelectedProductForProveedores] = useState(null);
   const [isProveedoresModalOpen, setIsProveedoresModalOpen] = useState(false);
@@ -183,11 +181,6 @@ export default function Productos() {
     onOpen();
   };
 
-  const handleInventarioClick = (producto) => {
-    setSelectedProductForInventory(producto);
-    setIsInventoryModalOpen(true);
-  };
-
   const handleDetailClick = (producto) => {
     setSelectedProducto(producto);
     setShowProveedores(true);
@@ -233,13 +226,6 @@ export default function Productos() {
                       onClick={() => handleEdit(producto)}
                     >
                       Editar
-                    </Button>
-                    <Button
-                      size="sm"
-                      colorScheme="blue"
-                      onClick={() => handleInventarioClick(producto)}
-                    >
-                      Inventario
                     </Button>
                     <Button
                       size="sm"
@@ -331,13 +317,6 @@ export default function Productos() {
           </form>
         </ModalContent>
       </Modal>
-
-      <InventarioForm 
-        isOpen={isInventoryModalOpen} 
-        onClose={() => setIsInventoryModalOpen(false)} 
-        productId={selectedProductForInventory?.idproducto}
-        onInventarioUpdated={fetchProductos}
-      />
 
       {showProveedores && selectedProducto && (
         <Box mt={4}>

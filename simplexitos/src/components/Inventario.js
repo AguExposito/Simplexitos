@@ -17,8 +17,12 @@ import {
   StatHelpText,
   StatArrow,
   Container,
+  Button,
+  HStack,
 } from '@chakra-ui/react';
+import { EditIcon } from '@chakra-ui/icons';
 import { API_BASE_URL } from '../config';
+import InventarioForm from './InventarioForm';
 
 export default function Inventario() {
   const [inventario, setInventario] = useState([]);
@@ -28,6 +32,8 @@ export default function Inventario() {
     stockAlto: 0,
     valorTotal: 0
   });
+  const [selectedInventario, setSelectedInventario] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const toast = useToast();
 
   useEffect(() => {
@@ -76,6 +82,11 @@ export default function Inventario() {
     }
   };
 
+  const handleEdit = (item) => {
+    setSelectedInventario(item);
+    setIsEditModalOpen(true);
+  };
+
   return (
     <Box maxW="7xl" mx="auto" pt={5} px={{ base: 2, sm: 12, md: 17 }}>
       <Container maxW="container.xl">
@@ -119,6 +130,7 @@ export default function Inventario() {
                 <Th>Punto Pedido</Th>
                 <Th>Estado</Th>
                 <Th>Modelo</Th>
+                <Th>Acciones</Th>
               </Tr>
             </Thead>
             <Tbody>
@@ -127,7 +139,7 @@ export default function Inventario() {
                 return (
                   <Tr key={item.idinventario}>
                     <Td>{item.idinventario}</Td>
-                    <Td>{item.producto?.nombreproducto || 'N/A'}</Td>
+                    <Td>{item.nombreproducto || 'N/A'}</Td>
                     <Td>{item.stock}</Td>
                     <Td>{item.stockseguridad}</Td>
                     <Td>{item.puntopedido}</Td>
@@ -135,6 +147,15 @@ export default function Inventario() {
                       <Badge colorScheme={status.color}>{status.text}</Badge>
                     </Td>
                     <Td>{item.modeloinventario || 'N/A'}</Td>
+                    <Td>
+                      <Button
+                        size="sm"
+                        leftIcon={<EditIcon />}
+                        onClick={() => handleEdit(item)}
+                      >
+                        Editar
+                      </Button>
+                    </Td>
                   </Tr>
                 );
               })}
@@ -142,6 +163,13 @@ export default function Inventario() {
           </Table>
         </Box>
       </Container>
+
+      <InventarioForm 
+        isOpen={isEditModalOpen} 
+        onClose={() => setIsEditModalOpen(false)} 
+        inventarioId={selectedInventario?.idinventario}
+        onInventarioUpdated={fetchInventario}
+      />
     </Box>
   );
 } 

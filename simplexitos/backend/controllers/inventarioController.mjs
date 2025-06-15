@@ -7,10 +7,13 @@ import { pool } from '../db/db.mjs';
 // Obtener todo el inventario
 export const getAllInventario = async (req, res) => {
     try {
-        const items = await inventarioModel.findAll({
-            include: [{ model: productoModel }]
-        });
-        res.status(200).json(items);
+        const result = await pool.query(`
+            SELECT i.*, p.nombreproducto 
+            FROM inventario i
+            LEFT JOIN producto p ON i.idproducto = p.idproducto
+            ORDER BY i.idinventario
+        `);
+        res.json(result.rows);
     } catch (error) {
         console.error('Error al obtener el inventario:', error);
         res.status(500).json({ error: error.message });
