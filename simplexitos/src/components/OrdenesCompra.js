@@ -57,7 +57,7 @@ export default function OrdenesCompra() {
 
   const fetchOrdenes = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/ordenes-compra`);
+      const response = await fetch(`${API_BASE_URL}/orden-compra`);
       const data = await response.json();
       setOrdenes(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -74,7 +74,7 @@ export default function OrdenesCompra() {
 
   const fetchProveedores = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/proveedores`);
+      const response = await fetch(`${API_BASE_URL}/proveedor`);
       const data = await response.json();
       setProveedores(Array.isArray(data) ? data : []);
     } catch (error) {

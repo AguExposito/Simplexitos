@@ -31,10 +31,10 @@ export default function Dashboard() {
   const fetchStats = async () => {
     try {
       const [productosRes, proveedoresRes, ventasRes, ordenesRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/productos`).then(res => res.json()),
-        fetch(`${API_BASE_URL}/proveedores`).then(res => res.json()),
-        fetch(`${API_BASE_URL}/ventas`).then(res => res.json()),
-        fetch(`${API_BASE_URL}/ordenes-compra`).then(res => res.json())
+        fetch(`${API_BASE_URL}/producto`).then(res => res.json()),
+        fetch(`${API_BASE_URL}/proveedor`).then(res => res.json()),
+        fetch(`${API_BASE_URL}/venta`).then(res => res.json()),
+        fetch(`${API_BASE_URL}/orden-compra`).then(res => res.json())
       ]);
       
       const productos = Array.isArray(productosRes) ? productosRes : [];

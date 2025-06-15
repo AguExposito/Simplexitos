@@ -1,5 +1,5 @@
 import readline from 'readline';
-import inventario from "../models/inventario.mjs";
+import inventarioModel from "../models/inventario.mjs";
 import proveedorproducto from "../models/proveedorproducto.mjs";
 import producto from "../models/producto.mjs";
 import { pool } from '../db/db.mjs';
@@ -7,7 +7,7 @@ import { pool } from '../db/db.mjs';
 // Obtener todo el inventario
 export const getAllInventario = async (req, res) => {
     try {
-        const items = await inventario.findAll({
+        const items = await inventarioModel.findAll({
             include: [{ model: producto }]
         });
         res.status(200).json(items);
@@ -126,20 +126,20 @@ const solicitarConfirmacion = () => {
 // Función para calcular el Lote Óptimo
 async function calcularloteoptimo(idproducto) {
     try {
-        const inventario = await inventario.findOne({
+        const inventarioItem = await inventarioModel.findOne({
             where: { idinventario: idinventario }
         });
-        const proveedor = await proveedorproducto.findOne({
+        const proveedorItem = await proveedorproducto.findOne({
             where: { idproducto: idproducto }
         });
 
-        if (!proveedor) {
+        if (!proveedorItem) {
             throw new Error('No se encontró proveedor para el artículo especificado');
         }
 
-        const demanda = inventario.demanda;
-        const costopedido = proveedor.costopedido;
-        const costoalmacenamiento = proveedor.costoalmacenamiento;
+        const demanda = inventarioItem.demanda;
+        const costopedido = proveedorItem.costopedido;
+        const costoalmacenamiento = proveedorItem.costoalmacenamiento;
         const loteoptimo = Math.sqrt((2 * demanda * costopedido) / costoalmacenamiento);
 
         return {loteoptimo, demanda};
@@ -193,20 +193,20 @@ async function calcularcostoalmacenamiento(idproducto, idproveedor, loteoptimo){
 async function calcularcostopedido(idproducto, idproveedor, loteoptimo, demanda){
     try {
 
-        const inventario = await inventario.findOne({
+        const inventarioItem = await inventarioModel.findOne({
             where: { idinventario: idinventario }
         });
-        const proveedor = await proveedorproducto.findOne({
+        const proveedorItem = await proveedorproducto.findOne({
             where: {idproducto: idproducto, idproveedor: idproveedor}
         });
 
-        const demanda = inventario.demanda;
+        const demanda = inventarioItem.demanda;
 
-        if (!proveedor) {
+        if (!proveedorItem) {
             throw new Error('No se encontró proveedor para el artículo especificado');
         }
         
-        const costopedido = proveedor.costopedido * (demanda / loteoptimo);
+        const costopedido = proveedorItem.costopedido * (demanda / loteoptimo);
         return costopedido;
     } catch (error) {
         throw new Error(`Error al calcular el costo de almacenamiento: ${error.message}`);
@@ -234,11 +234,11 @@ async function calcularROP(idproducto, idproveedor) {
 
         const diasLaborables = 90;
 
-        const inventario = await inventario.findOne({
+        const inventarioItem = await inventarioModel.findOne({
             where: { idinventario: idinventario }
         });
 
-        const demanda = inventario.demanda;
+        const demanda = inventarioItem.demanda;
 
         const proveedorproducto = await proveedorproducto.findOne({
             where: { idproducto: idproducto, idproveedor: idproveedor }
@@ -300,7 +300,7 @@ async function calcularstockseguridad(idproducto, idproveedor) {
 export const inventarioFuncion = async (idinventario, idproducto, modeloinventario, idproveedor) => {
     try {
         // Obtener el inventario actual
-        const inventarioActual = await inventario.findOne({
+        const inventarioActual = await inventarioModel.findOne({
             where: { idinventario: idinventario }
         });
 
