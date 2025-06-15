@@ -27,6 +27,7 @@ import {
 } from '@chakra-ui/react';
 import { AddIcon, EditIcon, DeleteIcon } from '@chakra-ui/icons';
 import { API_BASE_URL } from '../config';
+import InventarioForm from './InventarioForm';
 
 export default function Productos() {
   const [productos, setProductos] = useState([]);
@@ -43,6 +44,9 @@ export default function Productos() {
     demanda: 0,
     stockseguridad: 0
   });
+
+  const [selectedProductForInventory, setSelectedProductForInventory] = useState(null);
+  const [isInventoryModalOpen, setIsInventoryModalOpen] = useState(false);
 
   useEffect(() => {
     fetchProductos();
@@ -175,6 +179,11 @@ export default function Productos() {
     onOpen();
   };
 
+  const handleInventarioClick = (producto) => {
+    setSelectedProductForInventory(producto);
+    setIsInventoryModalOpen(true);
+  };
+
   return (
     <Box maxW="7xl" mx="auto" pt={5} px={{ base: 2, sm: 12, md: 17 }}>
       <HStack justify="space-between" mb={6}>
@@ -210,6 +219,13 @@ export default function Productos() {
                       onClick={() => handleEdit(producto)}
                     >
                       Editar
+                    </Button>
+                    <Button
+                      size="sm"
+                      colorScheme="blue"
+                      onClick={() => handleInventarioClick(producto)}
+                    >
+                      Inventario
                     </Button>
                     <Button
                       size="sm"
@@ -294,6 +310,13 @@ export default function Productos() {
           </form>
         </ModalContent>
       </Modal>
+
+      <InventarioForm 
+        isOpen={isInventoryModalOpen} 
+        onClose={() => setIsInventoryModalOpen(false)} 
+        productId={selectedProductForInventory?.idproducto}
+        onInventarioUpdated={fetchProductos}
+      />
     </Box>
   );
 } 

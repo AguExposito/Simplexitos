@@ -4,7 +4,9 @@ import {
   getInventarioById,
   createInventario,
   updateInventario,
-  deleteInventario
+  deleteInventario,
+  getInventarioByProducto,
+  updateInventarioByProducto
 } from '../controllers/inventarioController.mjs';
 
 const inventarioRoute = express.Router();
@@ -12,8 +14,10 @@ const inventarioRoute = express.Router();
 // Rutas de inventario
 inventarioRoute.get('/inventario', getInventario);
 inventarioRoute.get('/inventario/:id', getInventarioById);
+inventarioRoute.get('/inventario/producto/:idproducto', getInventarioByProducto);
 inventarioRoute.post('/inventario', createInventario);
 inventarioRoute.put('/inventario/:id', updateInventario);
+inventarioRoute.put('/inventario/producto/:idproducto', updateInventarioByProducto);
 inventarioRoute.delete('/inventario/:id', deleteInventario);
 
 export default inventarioRoute;

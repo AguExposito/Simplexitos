@@ -1,14 +1,14 @@
 import readline from 'readline';
 import inventarioModel from "../models/inventario.mjs";
-import proveedorproducto from "../models/proveedorproducto.mjs";
-import producto from "../models/producto.mjs";
+import proveedorProductoModel from "../models/proveedorproducto.mjs";
+import productoModel from "../models/producto.mjs";
 import { pool } from '../db/db.mjs';
 
 // Obtener todo el inventario
 export const getAllInventario = async (req, res) => {
     try {
         const items = await inventarioModel.findAll({
-            include: [{ model: producto }]
+            include: [{ model: productoModel }]
         });
         res.status(200).json(items);
     } catch (error) {
@@ -29,7 +29,7 @@ export const getInventario = async (req, res) => {
         res.json(result.rows);
     } catch (error) {
         console.error('Error al obtener inventario:', error);
-        res.status(500).json({ error: 'Error al obtener inventario' });
+        res.status(500).json({ error: 'Error al obtener inventario: ' + error.message });
     }
 };
 
@@ -44,13 +44,13 @@ export const getInventarioById = async (req, res) => {
         `, [id]);
         
         if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Registro de inventario no encontrado' });
+            return res.status(404).json({ error: 'Inventario no encontrado' });
         }
         
         res.json(result.rows[0]);
     } catch (error) {
-        console.error('Error al obtener registro de inventario:', error);
-        res.status(500).json({ error: 'Error al obtener registro de inventario' });
+        console.error('Error al obtener inventario:', error);
+        res.status(500).json({ error: 'Error al obtener inventario: ' + error.message });
     }
 };
 
@@ -129,7 +129,7 @@ async function calcularloteoptimo(idproducto) {
         const inventarioItem = await inventarioModel.findOne({
             where: { idinventario: idinventario }
         });
-        const proveedorItem = await proveedorproducto.findOne({
+        const proveedorItem = await proveedorProductoModel.findOne({
             where: { idproducto: idproducto }
         });
 
@@ -151,7 +151,7 @@ async function calcularloteoptimo(idproducto) {
 // Función para calcular el costo de compra
 async function calcularcostocompra(idproducto, idproveedor, loteoptimo) {
     try {
-        const proveedorproducto = await proveedorproducto.findOne({
+        const proveedorproducto = await proveedorProductoModel.findOne({
             where: { idproducto: idproducto, idproveedor: idproveedor }
         });
 
@@ -172,7 +172,7 @@ async function calcularcostocompra(idproducto, idproveedor, loteoptimo) {
 
 async function calcularcostoalmacenamiento(idproducto, idproveedor, loteoptimo){
     try {
-        const proveedorproducto = await proveedorproducto.findOne({
+        const proveedorproducto = await proveedorProductoModel.findOne({
             where: {idproducto: idproducto, idproveedor: idproveedor}
         });
         if (!proveedorproducto) {
@@ -196,7 +196,7 @@ async function calcularcostopedido(idproducto, idproveedor, loteoptimo, demanda)
         const inventarioItem = await inventarioModel.findOne({
             where: { idinventario: idinventario }
         });
-        const proveedorItem = await proveedorproducto.findOne({
+        const proveedorItem = await proveedorProductoModel.findOne({
             where: {idproducto: idproducto, idproveedor: idproveedor}
         });
 
@@ -240,7 +240,7 @@ async function calcularROP(idproducto, idproveedor) {
 
         const demanda = inventarioItem.demanda;
 
-        const proveedorproducto = await proveedorproducto.findOne({
+        const proveedorproducto = await proveedorProductoModel.findOne({
             where: { idproducto: idproducto, idproveedor: idproveedor }
         });
         
@@ -272,7 +272,7 @@ async function calcularROP(idproducto, idproveedor) {
 // Función para calcular el Stock de Seguridad (SS)
 async function calcularstockseguridad(idproducto, idproveedor) {
     try {
-        const proveedorproducto = await proveedorproducto.findOne({
+        const proveedorproducto = await proveedorProductoModel.findOne({
             where: { idproducto: idproducto, idproveedor: idproveedor }
         });
         
@@ -346,117 +346,142 @@ export const inventarioFuncion = async (idinventario, idproducto, modeloinventar
 
 // Crear nuevo inventario
 export const createInventario = async (req, res) => {
-    const {
-        idproducto,
-        stock,
-        demanda,
-        costoalmacenamiento,
-        costocompra,
-        costopedido,
-        puntopedido,
-        stockseguridad,
-        loteoptimo,
-        modeloinventario,
-        cgi,
-        frecuenciadereabastecimiento
-    } = req.body;
-
     try {
-        // Verificar que el producto existe
+        const { idproducto, stock = 0, puntopedido = 0, stockseguridad = 0, loteoptimo = 1 } = req.body;
+        
+        // Verificar si el producto existe
         const productoCheck = await pool.query(
             'SELECT * FROM producto WHERE idproducto = $1',
             [idproducto]
         );
-
+        
         if (productoCheck.rows.length === 0) {
-            return res.status(400).json({ error: 'El producto no existe' });
+            return res.status(404).json({ error: 'El producto no existe' });
         }
-
-        const result = await pool.query(
-            `INSERT INTO inventario 
-             (idproducto, stock, demanda, costoalmacenamiento, costocompra, costopedido,
-              puntopedido, stockseguridad, loteoptimo, modeloinventario, cgi, frecuenciadereabastecimiento)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-             RETURNING *`,
-            [
-                idproducto, stock, demanda, costoalmacenamiento, costocompra, costopedido,
-                puntopedido, stockseguridad, loteoptimo, modeloinventario, cgi, frecuenciadereabastecimiento
-            ]
+        
+        // Verificar si ya existe un inventario para este producto
+        const inventarioCheck = await pool.query(
+            'SELECT * FROM inventario WHERE idproducto = $1',
+            [idproducto]
         );
-
+        
+        if (inventarioCheck.rows.length > 0) {
+            return res.status(400).json({ error: 'Ya existe un inventario para este producto' });
+        }
+        
+        const result = await pool.query(`
+            INSERT INTO inventario 
+            (idproducto, stock, puntopedido, stockseguridad, loteoptimo) 
+            VALUES ($1, $2, $3, $4, $5) 
+            RETURNING *
+        `, [idproducto, stock, puntopedido, stockseguridad, loteoptimo]);
+        
         res.status(201).json(result.rows[0]);
     } catch (error) {
-        console.error('Error al crear registro de inventario:', error);
-        res.status(500).json({ error: 'Error al crear registro de inventario' });
+        console.error('Error al crear inventario:', error);
+        res.status(500).json({ error: 'Error al crear inventario: ' + error.message });
     }
 };
 
 export const updateInventario = async (req, res) => {
-    const { id } = req.params;
-    const {
-        stock,
-        demanda,
-        costoalmacenamiento,
-        costocompra,
-        costopedido,
-        puntopedido,
-        stockseguridad,
-        loteoptimo,
-        modeloinventario,
-        cgi,
-        frecuenciadereabastecimiento
-    } = req.body;
-
     try {
-        const result = await pool.query(
-            `UPDATE inventario 
-             SET stock = COALESCE($1, stock),
-                 demanda = COALESCE($2, demanda),
-                 costoalmacenamiento = COALESCE($3, costoalmacenamiento),
-                 costocompra = COALESCE($4, costocompra),
-                 costopedido = COALESCE($5, costopedido),
-                 puntopedido = COALESCE($6, puntopedido),
-                 stockseguridad = COALESCE($7, stockseguridad),
-                 loteoptimo = COALESCE($8, loteoptimo),
-                 modeloinventario = COALESCE($9, modeloinventario),
-                 cgi = COALESCE($10, cgi),
-                 frecuenciadereabastecimiento = COALESCE($11, frecuenciadereabastecimiento)
-             WHERE idinventario = $12
-             RETURNING *`,
-            [
-                stock, demanda, costoalmacenamiento, costocompra, costopedido,
-                puntopedido, stockseguridad, loteoptimo, modeloinventario, cgi,
-                frecuenciadereabastecimiento, id
-            ]
-        );
-
+        const { id } = req.params;
+        const { stock, puntopedido, stockseguridad, loteoptimo, modeloinventario } = req.body;
+        
+        const result = await pool.query(`
+            UPDATE inventario 
+            SET stock = COALESCE($1, stock),
+                puntopedido = COALESCE($2, puntopedido),
+                stockseguridad = COALESCE($3, stockseguridad),
+                loteoptimo = COALESCE($4, loteoptimo),
+                modeloinventario = COALESCE($5, modeloinventario)
+            WHERE idinventario = $6
+            RETURNING *
+        `, [stock, puntopedido, stockseguridad, loteoptimo, modeloinventario, id]);
+        
         if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Registro de inventario no encontrado' });
+            return res.status(404).json({ error: 'Inventario no encontrado' });
         }
-
+        
         res.json(result.rows[0]);
     } catch (error) {
-        console.error('Error al actualizar registro de inventario:', error);
-        res.status(500).json({ error: 'Error al actualizar registro de inventario' });
+        console.error('Error al actualizar inventario:', error);
+        res.status(500).json({ error: 'Error al actualizar inventario: ' + error.message });
     }
 };
 
 export const deleteInventario = async (req, res) => {
-    const { id } = req.params;
-
     try {
+        const { id } = req.params;
+        
         const result = await pool.query(
             'DELETE FROM inventario WHERE idinventario = $1 RETURNING *',
             [id]
         );
-
+        
         if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Registro de inventario no encontrado' });
+            return res.status(404).json({ error: 'Inventario no encontrado' });
         }
-
-        res.json({ message: 'Registro de inventario eliminado correctamente' });
+        
+        res.json({ message: 'Inventario eliminado correctamente' });
     } catch (error) {
-        console.error('Error al eliminar registro de inventario:', error);
-        res.status(500).json({ error: 'Error al eliminar registro de inventario' });
+        console.error('Error al eliminar inventario:', error);
+        res.status(500).json({ error: 'Error al eliminar inventario: ' + error.message });
     }
+};
+
+// Obtener inventario por producto ID
+export const getInventarioByProducto = async (req, res) => {
+    try {
+        const { idproducto } = req.params;
+        const result = await pool.query(`
+            SELECT i.*, p.nombreproducto 
+            FROM inventario i
+            LEFT JOIN producto p ON i.idproducto = p.idproducto
+            WHERE i.idproducto = $1
+        `, [idproducto]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Inventario no encontrado para este producto' });
+        }
+        
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error('Error al obtener inventario por producto:', error);
+        res.status(500).json({ error: 'Error al obtener inventario por producto: ' + error.message });
+    }
+};
+
+// Actualizar inventario por ID de producto
+export const updateInventarioByProducto = async (req, res) => {
+  try {
+    const { idproducto } = req.params;
+    const { stock, puntopedido, stockseguridad, loteoptimo, modeloinventario } = req.body;
+    
+    // Verificar que el inventario existe para este producto
+    const checkResult = await pool.query(
+      'SELECT * FROM inventario WHERE idproducto = $1',
+      [idproducto]
+    );
+    
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Inventario no encontrado para este producto' });
+    }
+    
+    const result = await pool.query(`
+      UPDATE inventario 
+      SET stock = COALESCE($1, stock),
+          puntopedido = COALESCE($2, puntopedido),
+          stockseguridad = COALESCE($3, stockseguridad),
+          loteoptimo = COALESCE($4, loteoptimo),
+          modeloinventario = COALESCE($5, modeloinventario)
+      WHERE idproducto = $6
+      RETURNING *
+    `, [stock, puntopedido, stockseguridad, loteoptimo, modeloinventario, idproducto]);
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error al actualizar inventario por producto:', error);
+    res.status(500).json({ error: 'Error al actualizar inventario por producto: ' + error.message });
+  }
 };

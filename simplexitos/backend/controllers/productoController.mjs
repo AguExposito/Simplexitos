@@ -6,7 +6,7 @@ export const getProductos = async (req, res) => {
     res.json(result.rows);
   } catch (error) {
     console.error('Error al obtener productos:', error);
-    res.status(500).json({ error: 'Error al obtener productos' });
+    res.status(500).json({ error: 'Error al obtener productos: ' + error.message });
   }
 };
 
@@ -22,7 +22,7 @@ export const getProductoById = async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error al obtener producto:', error);
-    res.status(500).json({ error: 'Error al obtener producto' });
+    res.status(500).json({ error: 'Error al obtener producto: ' + error.message });
   }
 };
 
@@ -33,12 +33,16 @@ export const createProducto = async (req, res) => {
     modeloproducto,
     descripcionproducto,
     estadoproducto,
-    demanda = 0,  // Valor por defecto
-    stockseguridad = 0  // Valor por defecto
+    demanda = 0,
+    stockseguridad = 0
   } = req.body;
 
   try {
-    const result = await pool.query(
+    // Iniciar una transacción
+    await pool.query('BEGIN');
+    
+    // Crear producto
+    const productoResult = await pool.query(
       `INSERT INTO producto 
        (codproducto, nombreproducto, modeloproducto, descripcionproducto, demanda, stockseguridad, estadoproducto)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -46,8 +50,24 @@ export const createProducto = async (req, res) => {
       [codproducto, nombreproducto, modeloproducto, descripcionproducto, demanda, stockseguridad, estadoproducto || 'ACTIVO']
     );
 
-    res.status(201).json(result.rows[0]);
+    const nuevoProducto = productoResult.rows[0];
+    
+    // Crear un registro de inventario para este producto
+    await pool.query(
+      `INSERT INTO inventario 
+       (idproducto, stock, demanda, puntopedido, stockseguridad, loteoptimo, modeloinventario)
+       VALUES ($1, 0, $2, 5, $3, 10, $4)`,
+      [nuevoProducto.idproducto, demanda, stockseguridad, 'Lote Fijo']
+    );
+    
+    // Confirmar la transacción
+    await pool.query('COMMIT');
+
+    res.status(201).json(nuevoProducto);
   } catch (error) {
+    // Revertir la transacción en caso de error
+    await pool.query('ROLLBACK');
+    
     console.error('Error al crear producto:', error);
     res.status(500).json({ error: 'Error al crear producto: ' + error.message });
   }
@@ -88,7 +108,7 @@ export const updateProducto = async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error al actualizar producto:', error);
-    res.status(500).json({ error: 'Error al actualizar producto' });
+    res.status(500).json({ error: 'Error al actualizar producto: ' + error.message });
   }
 };
 
@@ -96,18 +116,33 @@ export const deleteProducto = async (req, res) => {
   const { id } = req.params;
 
   try {
+    // Iniciar una transacción
+    await pool.query('BEGIN');
+    
+    // Eliminar el inventario asociado al producto
+    await pool.query('DELETE FROM inventario WHERE idproducto = $1', [id]);
+    
+    // Eliminar el producto (hard delete en vez de soft delete)
     const result = await pool.query(
-      'UPDATE producto SET estadoproducto = $1, fechabajaproducto = CURRENT_DATE WHERE idproducto = $2 RETURNING *',
-      ['INACTIVO', id]
+      'DELETE FROM producto WHERE idproducto = $1 RETURNING *',
+      [id]
     );
 
     if (result.rows.length === 0) {
+      // Revertir transacción si no se encuentra el producto
+      await pool.query('ROLLBACK');
       return res.status(404).json({ error: 'Producto no encontrado' });
     }
 
-    res.json({ message: 'Producto eliminado correctamente' });
+    // Confirmar la transacción
+    await pool.query('COMMIT');
+
+    res.json({ message: 'Producto y su inventario han sido eliminados correctamente' });
   } catch (error) {
+    // Revertir la transacción en caso de error
+    await pool.query('ROLLBACK');
+    
     console.error('Error al eliminar producto:', error);
-    res.status(500).json({ error: 'Error al eliminar producto' });
+    res.status(500).json({ error: 'Error al eliminar producto: ' + error.message });
   }
 };
