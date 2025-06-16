@@ -28,6 +28,8 @@ import {
   NumberInputStepper,
   NumberIncrementStepper,
   NumberDecrementStepper,
+  Text,
+  Badge,
 } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { API_BASE_URL } from '../config';
@@ -35,6 +37,7 @@ import { API_BASE_URL } from '../config';
 export default function Ventas() {
   const [ventas, setVentas] = useState([]);
   const [productos, setProductos] = useState([]);
+  const [inventario, setInventario] = useState([]);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
 
@@ -46,7 +49,31 @@ export default function Ventas() {
   useEffect(() => {
     fetchVentas();
     fetchProductos();
+    fetchInventario();
   }, []);
+
+  const fetchInventario = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/inventario`);
+      if (!response.ok) {
+        console.error('Error HTTP:', response.status, response.statusText);
+        setInventario([]);
+        return;
+      }
+      const data = await response.json();
+      setInventario(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching inventario:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo cargar el inventario',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      setInventario([]);
+    }
+  };
 
   const fetchVentas = async () => {
     try {
@@ -98,12 +125,31 @@ export default function Ventas() {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: value,
+      cantidadventa: 1 // Reset cantidad when product changes
     }));
+  };
+
+  const getStockDisponible = (idproducto) => {
+    const item = inventario.find(i => i.idproducto === parseInt(idproducto));
+    return item ? item.stock : 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const stockDisponible = getStockDisponible(formData.idproducto);
+
+    if (formData.cantidadventa > stockDisponible) {
+      toast({
+        title: 'Error',
+        description: `Stock insuficiente. Solo hay ${stockDisponible} unidades disponibles.`,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+
     try {
       const response = await fetch(`${API_BASE_URL}/venta`, {
         method: 'POST',
@@ -122,18 +168,22 @@ export default function Ventas() {
           isClosable: true,
         });
         fetchVentas();
+        fetchInventario(); // Actualizar el inventario
         onClose();
         setFormData({
           idproducto: '',
           cantidadventa: 1
         });
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al registrar la venta');
       }
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Hubo un error al registrar la venta',
+        description: error.message || 'Hubo un error al registrar la venta',
         status: 'error',
-        duration: 3000,
+        duration: 5000,
         isClosable: true,
       });
     }
@@ -233,17 +283,25 @@ export default function Ventas() {
                   onChange={handleInputChange}
                   placeholder="Seleccione un producto"
                 >
-                  {productos.map((producto) => (
-                    <option key={producto.idproducto} value={producto.idproducto}>
-                      {producto.nombreproducto}
-                    </option>
-                  ))}
+                  {productos.map((producto) => {
+                    const stock = getStockDisponible(producto.idproducto);
+                    return (
+                      <option 
+                        key={producto.idproducto} 
+                        value={producto.idproducto}
+                        disabled={stock <= 0}
+                      >
+                        {producto.nombreproducto} (Stock: {stock})
+                      </option>
+                    );
+                  })}
                 </Select>
               </FormControl>
               <FormControl isRequired>
                 <FormLabel>Cantidad</FormLabel>
                 <NumberInput
                   min={1}
+                  max={getStockDisponible(formData.idproducto)}
                   value={formData.cantidadventa}
                   onChange={(value) => setFormData(prev => ({ ...prev, cantidadventa: value }))}
                 >
@@ -253,13 +311,20 @@ export default function Ventas() {
                     <NumberDecrementStepper />
                   </NumberInputStepper>
                 </NumberInput>
+                <Text mt={2} fontSize="sm" color="gray.500">
+                  Stock disponible: {getStockDisponible(formData.idproducto)} unidades
+                </Text>
               </FormControl>
             </ModalBody>
             <ModalFooter>
               <Button variant="ghost" mr={3} onClick={onClose}>
                 Cancelar
               </Button>
-              <Button colorScheme="blue" type="submit">
+              <Button 
+                colorScheme="blue" 
+                type="submit"
+                isDisabled={!formData.idproducto || formData.cantidadventa > getStockDisponible(formData.idproducto)}
+              >
                 Registrar Venta
               </Button>
             </ModalFooter>
