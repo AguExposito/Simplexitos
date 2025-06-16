@@ -73,33 +73,62 @@ export const updateProducto = async (req, res) => {
       estadoproducto 
     } = req.body;
 
-    // Primero actualizamos el producto
-    const result = await pool.query(`
-      UPDATE producto 
-      SET codproducto = $1,
-          nombreproducto = $2,
-          modeloproducto = $3,
-          descripcionproducto = $4,
-          demanda = $5,
-          stockseguridad = $6,
-          estadoproducto = $7,
-          fechamodificacionproducto = CURRENT_DATE
-      WHERE idproducto = $8
-      RETURNING *
-    `, [codproducto, nombreproducto, modeloproducto, descripcionproducto, demanda, stockseguridad, estadoproducto, id]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Producto no encontrado' });
+    // Validate modeloproducto
+    if (modeloproducto && !['LOTE_FIJO', 'PERIODO_FIJO'].includes(modeloproducto)) {
+      return res.status(400).json({ 
+        error: 'Modelo de producto inválido',
+        details: 'El modelo debe ser LOTE_FIJO o PERIODO_FIJO'
+      });
     }
 
-    // Luego actualizamos el stock de seguridad en el inventario
-    await pool.query(`
-      UPDATE inventario 
-      SET stockseguridad = $1
-      WHERE idproducto = $2
-    `, [stockseguridad, id]);
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
 
-    res.json(result.rows[0]);
+      // Primero actualizamos el producto
+      const result = await client.query(`
+        UPDATE producto 
+        SET codproducto = $1,
+            nombreproducto = $2,
+            modeloproducto = $3,
+            descripcionproducto = $4,
+            demanda = $5,
+            stockseguridad = $6,
+            estadoproducto = $7,
+            fechamodificacionproducto = CURRENT_DATE
+        WHERE idproducto = $8
+        RETURNING *
+      `, [codproducto, nombreproducto, modeloproducto, descripcionproducto, demanda, stockseguridad, estadoproducto, id]);
+
+      if (result.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'Producto no encontrado' });
+      }
+
+      // Si el modelo cambió, actualizamos también el inventario
+      if (modeloproducto) {
+        await client.query(`
+          UPDATE inventario 
+          SET modeloinventario = $1
+          WHERE idproducto = $2
+        `, [modeloproducto, id]);
+      }
+
+      // Actualizamos el stock de seguridad en el inventario
+      await client.query(`
+        UPDATE inventario 
+        SET stockseguridad = $1
+        WHERE idproducto = $2
+      `, [stockseguridad, id]);
+
+      await client.query('COMMIT');
+      res.json(result.rows[0]);
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   } catch (error) {
     console.error('Error al actualizar producto:', error);
     res.status(500).json({ error: 'Error al actualizar producto: ' + error.message });
