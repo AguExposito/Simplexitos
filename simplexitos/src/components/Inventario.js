@@ -19,7 +19,21 @@ import {
   StatHelpText,
   StatArrow,
   useToast,
-  useDisclosure
+  useDisclosure,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalCloseButton,
+  Text,
+  VStack,
+  Grid,
+  GridItem,
+  Divider,
+  useColorModeValue,
+  Progress,
+  Flex
 } from '@chakra-ui/react';
 import { EditIcon, AddIcon } from '@chakra-ui/icons';
 import { API_BASE_URL } from '../config';
@@ -52,6 +66,13 @@ export default function Inventario() {
     frecuenciadereabastecimiento: 0
   });
   const [analisisProducto, setAnalisisProducto] = useState(null);
+
+  // Mover los useColorModeValue al nivel superior
+  const bgGray = useColorModeValue('gray.50', 'gray.700');
+  const bgBlue = useColorModeValue('blue.50', 'blue.900');
+  const bgGreen = useColorModeValue('green.50', 'green.900');
+  const bgPurple = useColorModeValue('purple.50', 'purple.900');
+  const textGray = useColorModeValue('gray.600', 'gray.300');
 
   useEffect(() => {
     fetchInventario();
@@ -140,6 +161,50 @@ export default function Inventario() {
     } catch (error) {
       console.error('Error al obtener análisis del producto:', error);
     }
+  };
+
+  // Componente del gráfico
+  const CostChart = ({ data }) => {
+    const totalCost = (data.costocompra || 0) + (data.costopedido || 0) + (data.costoalmacenamiento || 0);
+    
+    const getPercentage = (value) => {
+      if (totalCost === 0) return 0;
+      return ((value || 0) / totalCost) * 100;
+    };
+
+    const costs = [
+      { name: 'Compra', value: data.costocompra || 0, color: 'blue.400' },
+      { name: 'Pedido', value: data.costopedido || 0, color: 'green.400' },
+      { name: 'Almacenamiento', value: data.costoalmacenamiento || 0, color: 'yellow.400' }
+    ];
+
+    return (
+      <Box>
+        <VStack spacing={4} align="stretch">
+          {costs.map((cost, index) => (
+            <Box key={index}>
+              <Flex justify="space-between" mb={1}>
+                <Text fontSize="sm">{cost.name}</Text>
+                <Text fontSize="sm" fontWeight="bold">
+                  ${cost.value.toFixed(2)} ({getPercentage(cost.value).toFixed(1)}%)
+                </Text>
+              </Flex>
+              <Progress
+                value={getPercentage(cost.value)}
+                colorScheme={cost.color.split('.')[0]}
+                size="sm"
+                borderRadius="full"
+              />
+            </Box>
+          ))}
+          <Divider my={2} />
+          <Flex justify="space-between" fontWeight="bold">
+            <Text>Total (CGI)</Text>
+            <Text>${totalCost.toFixed(2)}</Text>
+          </Flex>
+        </VStack>
+      </Box>
+    );
   };
 
   return (
@@ -236,70 +301,60 @@ export default function Inventario() {
         />
 
         {analisisProducto && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-              <div className="mt-3">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">
-                  Análisis de {analisisProducto.nombreproducto}
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-semibold text-gray-700">Modelo de Inventario</h4>
-                    <p className="text-gray-600">{analisisProducto.modeloinventario || 'No especificado'}</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-700">Lote Óptimo</h4>
-                    <p className="text-gray-600">{analisisProducto.loteoptimo?.toFixed(2) || '0.00'} unidades</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-700">Costos</h4>
-                    <div className="pl-4 space-y-2">
-                      <p className="text-gray-600">
-                        Costo de Compra: ${analisisProducto.costocompra?.toFixed(2) || '0.00'}
-                      </p>
-                      <p className="text-gray-600">
-                        Costo de Pedido: ${analisisProducto.costopedido?.toFixed(2) || '0.00'}
-                      </p>
-                      <p className="text-gray-600">
-                        Costo de Almacenamiento: ${analisisProducto.costoalmacenamiento?.toFixed(2) || '0.00'}
-                      </p>
-                      <p className="text-gray-600 font-bold">
-                        Costo Total (CGI): ${analisisProducto.cgi?.toFixed(2) || '0.00'}
-                      </p>
-                    </div>
-                  </div>
-                  {analisisProducto.modeloinventario === 'PERIODO_FIJO' && (
-                    <div>
-                      <h4 className="font-semibold text-gray-700">Frecuencia de Pedidos</h4>
-                      <p className="text-gray-600">
-                        {(1 / analisisProducto.tiempoOptimo)?.toFixed(2) || '0.00'} pedidos por año
-                      </p>
-                    </div>
-                  )}
-                  <div>
-                    <h4 className="font-semibold text-gray-700">Stock Actual</h4>
-                    <p className="text-gray-600">{analisisProducto.stock || 0} unidades</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-700">Punto de Pedido</h4>
-                    <p className="text-gray-600">{analisisProducto.puntopedido || 0} unidades</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-700">Stock de Seguridad</h4>
-                    <p className="text-gray-600">{analisisProducto.stockseguridad || 0} unidades</p>
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <button
-                    onClick={() => setAnalisisProducto(null)}
-                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:text-sm"
-                  >
-                    Cerrar
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <Modal isOpen={true} onClose={() => setAnalisisProducto(null)} size="xl">
+            <ModalOverlay />
+            <ModalContent>
+              <ModalHeader>
+                <Heading size="md">Análisis de {analisisProducto.nombreproducto}</Heading>
+              </ModalHeader>
+              <ModalCloseButton />
+              <ModalBody pb={6}>
+                <Grid templateColumns="repeat(2, 1fr)" gap={6}>
+                  <GridItem colSpan={2}>
+                    <Box p={4} borderRadius="lg" bg={bgGray}>
+                      <Text fontSize="lg" fontWeight="bold" mb={2}>
+                        Modelo de Inventario: {analisisProducto.modeloinventario}
+                      </Text>
+                      <Text fontSize="md" color={textGray}>
+                        Lote Óptimo: {analisisProducto.loteoptimo?.toFixed(2) || '0.00'} unidades
+                      </Text>
+                    </Box>
+                  </GridItem>
+
+                  <GridItem colSpan={1}>
+                    <VStack align="stretch" spacing={4}>
+                      <Box p={4} borderRadius="lg" bg={bgBlue}>
+                        <Text fontWeight="bold" mb={2}>Costos</Text>
+                        <CostChart data={analisisProducto} />
+                      </Box>
+
+                      {analisisProducto.modeloinventario === 'PERIODO_FIJO' && (
+                        <Box p={4} borderRadius="lg" bg={bgGreen}>
+                          <Text fontWeight="bold" mb={2}>Frecuencia de Pedidos</Text>
+                          <Text>
+                            {(1 / analisisProducto.tiempoOptimo)?.toFixed(2) || '0.00'} pedidos por año
+                          </Text>
+                        </Box>
+                      )}
+                    </VStack>
+                  </GridItem>
+
+                  <GridItem colSpan={1}>
+                    <VStack align="stretch" spacing={4}>
+                      <Box p={4} borderRadius="lg" bg={bgPurple}>
+                        <Text fontWeight="bold" mb={2}>Stock</Text>
+                        <VStack align="stretch" spacing={2}>
+                          <Text>Stock Actual: {analisisProducto.stock || 0} unidades</Text>
+                          <Text>Punto de Pedido: {analisisProducto.puntopedido || 0} unidades</Text>
+                          <Text>Stock de Seguridad: {analisisProducto.stockseguridad || 0} unidades</Text>
+                        </VStack>
+                      </Box>
+                    </VStack>
+                  </GridItem>
+                </Grid>
+              </ModalBody>
+            </ModalContent>
+          </Modal>
         )}
       </Container>
     </Box>
