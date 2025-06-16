@@ -28,7 +28,11 @@ import InventarioForm from './InventarioForm';
 export default function Inventario() {
   const [inventario, setInventario] = useState([]);
   const [productos, setProductos] = useState([]);
-  const [valorTotal, setValorTotal] = useState(null);
+  const [valorTotal, setValorTotal] = useState({
+    valor_total: 0,
+    total_productos: 0,
+    total_unidades: 0
+  });
   const [selectedInventario, setSelectedInventario] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -47,6 +51,7 @@ export default function Inventario() {
     cgi: 0,
     frecuenciadereabastecimiento: 0
   });
+  const [analisisProducto, setAnalisisProducto] = useState(null);
 
   useEffect(() => {
     fetchInventario();
@@ -123,6 +128,20 @@ export default function Inventario() {
     setIsEditModalOpen(true);
   };
 
+  const handleAnalizarProducto = async (item) => {
+    try {
+      const response = await fetch(`http://localhost:1234/api/inventario/${item.idinventario}`);
+      const data = await response.json();
+      const productoInfo = productos.find(p => p.idproducto === item.idproducto);
+      setAnalisisProducto({
+        ...data,
+        nombreproducto: productoInfo?.nombreproducto || 'Producto'
+      });
+    } catch (error) {
+      console.error('Error al obtener análisis del producto:', error);
+    }
+  };
+
   return (
     <Box maxW="7xl" mx="auto" pt={5} px={{ base: 2, sm: 12, md: 17 }}>
       <Container maxW="container.xl">
@@ -131,12 +150,12 @@ export default function Inventario() {
         <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={{ base: 5, lg: 8 }} mb={8}>
           <Stat>
             <StatLabel>Total Productos</StatLabel>
-            <StatNumber>{valorTotal?.total_productos || 0}</StatNumber>
+            <StatNumber>{valorTotal.total_productos}</StatNumber>
           </Stat>
           <Stat>
             <StatLabel>Stock Bajo</StatLabel>
             <StatNumber>
-              {inventario.filter(item => item.stock <= item.stockseguridad).length}
+              {inventario.filter(item => item.stock < item.stockseguridad).length}
             </StatNumber>
             <StatHelpText>
               <StatArrow type="decrease" />
@@ -155,7 +174,7 @@ export default function Inventario() {
           </Stat>
           <Stat>
             <StatLabel>Valor Total</StatLabel>
-            <StatNumber>${valorTotal?.valor_total?.toFixed(2) || '0.00'}</StatNumber>
+            <StatNumber>${valorTotal.valor_total.toFixed(2)}</StatNumber>
           </Stat>
         </SimpleGrid>
 
@@ -194,6 +213,13 @@ export default function Inventario() {
                       >
                         Editar
                       </Button>
+                      <Button
+                        size="sm"
+                        leftIcon={<EditIcon />}
+                        onClick={() => handleAnalizarProducto(item)}
+                      >
+                        Analizar
+                      </Button>
                     </Td>
                   </Tr>
                 );
@@ -208,6 +234,73 @@ export default function Inventario() {
           inventarioId={selectedInventario?.idinventario}
           onInventarioUpdated={fetchInventario}
         />
+
+        {analisisProducto && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <div className="mt-3">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  Análisis de {analisisProducto.nombreproducto}
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-semibold text-gray-700">Modelo de Inventario</h4>
+                    <p className="text-gray-600">{analisisProducto.modeloinventario || 'No especificado'}</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-700">Lote Óptimo</h4>
+                    <p className="text-gray-600">{analisisProducto.loteoptimo?.toFixed(2) || '0.00'} unidades</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-700">Costos</h4>
+                    <div className="pl-4 space-y-2">
+                      <p className="text-gray-600">
+                        Costo de Compra: ${analisisProducto.costocompra?.toFixed(2) || '0.00'}
+                      </p>
+                      <p className="text-gray-600">
+                        Costo de Pedido: ${analisisProducto.costopedido?.toFixed(2) || '0.00'}
+                      </p>
+                      <p className="text-gray-600">
+                        Costo de Almacenamiento: ${analisisProducto.costoalmacenamiento?.toFixed(2) || '0.00'}
+                      </p>
+                      <p className="text-gray-600 font-bold">
+                        Costo Total (CGI): ${analisisProducto.cgi?.toFixed(2) || '0.00'}
+                      </p>
+                    </div>
+                  </div>
+                  {analisisProducto.modeloinventario === 'PERIODO_FIJO' && (
+                    <div>
+                      <h4 className="font-semibold text-gray-700">Frecuencia de Pedidos</h4>
+                      <p className="text-gray-600">
+                        {(1 / analisisProducto.tiempoOptimo)?.toFixed(2) || '0.00'} pedidos por año
+                      </p>
+                    </div>
+                  )}
+                  <div>
+                    <h4 className="font-semibold text-gray-700">Stock Actual</h4>
+                    <p className="text-gray-600">{analisisProducto.stock || 0} unidades</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-700">Punto de Pedido</h4>
+                    <p className="text-gray-600">{analisisProducto.puntopedido || 0} unidades</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-700">Stock de Seguridad</h4>
+                    <p className="text-gray-600">{analisisProducto.stockseguridad || 0} unidades</p>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <button
+                    onClick={() => setAnalisisProducto(null)}
+                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:text-sm"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </Container>
     </Box>
   );

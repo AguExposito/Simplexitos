@@ -42,8 +42,8 @@ export default function Productos() {
     modeloproducto: 'LOTE_FIJO',
     descripcionproducto: '',
     estadoproducto: 'ACTIVO',
-    demanda: 0,
-    stockseguridad: 0
+    demanda: '',
+    stockseguridad: '',
   });
 
   const [showProveedores, setShowProveedores] = useState(false);
@@ -99,7 +99,11 @@ export default function Productos() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          demanda: parseFloat(formData.demanda) || 0,
+          stockseguridad: parseInt(formData.stockseguridad) || 0
+        }),
       });
 
       if (response.ok) {
@@ -132,7 +136,7 @@ export default function Productos() {
       modeloproducto: producto.modeloproducto || 'LOTE_FIJO',
       descripcionproducto: producto.descripcionproducto || '',
       estadoproducto: producto.estadoproducto,
-      demanda: producto.demanda || 0,
+      demanda: producto.demanda?.toFixed(2) || '0.00',
       stockseguridad: producto.stockseguridad || 0
     });
     onOpen();
@@ -175,8 +179,8 @@ export default function Productos() {
       modeloproducto: 'LOTE_FIJO',
       descripcionproducto: '',
       estadoproducto: 'ACTIVO',
-      demanda: 0,
-      stockseguridad: 0
+      demanda: '',
+      stockseguridad: '',
     });
     onOpen();
   };
@@ -207,6 +211,8 @@ export default function Productos() {
               <Th>Código</Th>
               <Th>Nombre</Th>
               <Th>Modelo</Th>
+              <Th>Demanda Anual</Th>
+              <Th>Stock Seguridad</Th>
               <Th>Estado</Th>
               <Th>Acciones</Th>
             </Tr>
@@ -217,6 +223,8 @@ export default function Productos() {
                 <Td>{producto.codproducto}</Td>
                 <Td>{producto.nombreproducto}</Td>
                 <Td>{producto.modeloproducto}</Td>
+                <Td>{producto.demanda?.toFixed(2) || '0.00'} unidades/año</Td>
+                <Td>{producto.stockseguridad}</Td>
                 <Td>{producto.estadoproducto}</Td>
                 <Td>
                   <HStack spacing={2}>
@@ -304,6 +312,22 @@ export default function Productos() {
                   <option value="ACTIVO">Activo</option>
                   <option value="INACTIVO">Inactivo</option>
                 </Select>
+              </FormControl>
+              <FormControl isRequired mb={4}>
+                <FormLabel>Demanda Anual</FormLabel>
+                <Input
+                  name="demanda"
+                  value={formData.demanda}
+                  onChange={handleInputChange}
+                />
+              </FormControl>
+              <FormControl isRequired mb={4}>
+                <FormLabel>Stock de Seguridad</FormLabel>
+                <Input
+                  name="stockseguridad"
+                  value={formData.stockseguridad}
+                  onChange={handleInputChange}
+                />
               </FormControl>
             </ModalBody>
             <ModalFooter>

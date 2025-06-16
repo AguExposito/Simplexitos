@@ -27,83 +27,77 @@ export const getProductoById = async (req, res) => {
 };
 
 export const createProducto = async (req, res) => {
-  const {
-    codproducto,
-    nombreproducto,
-    modeloproducto,
-    descripcionproducto,
-    estadoproducto,
-    demanda = 0,
-    stockseguridad = 0
-  } = req.body;
-
   try {
-    // Iniciar una transacción
-    await pool.query('BEGIN');
-    
-    // Crear producto
-    const productoResult = await pool.query(
-      `INSERT INTO producto 
-       (codproducto, nombreproducto, modeloproducto, descripcionproducto, demanda, stockseguridad, estadoproducto)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING *`,
-      [codproducto, nombreproducto, modeloproducto, descripcionproducto, demanda, stockseguridad, estadoproducto || 'ACTIVO']
-    );
+    const { 
+      codproducto, 
+      nombreproducto, 
+      modeloproducto, 
+      descripcionproducto, 
+      demanda,
+      stockseguridad,
+      estadoproducto 
+    } = req.body;
 
-    const nuevoProducto = productoResult.rows[0];
-    
-    // Crear un registro de inventario para este producto
-    await pool.query(
-      `INSERT INTO inventario 
-       (idproducto, stock, demanda, puntopedido, stockseguridad, loteoptimo, modeloinventario)
-       VALUES ($1, 0, $2, 5, $3, 10, $4)`,
-      [nuevoProducto.idproducto, demanda, stockseguridad, 'Lote Fijo']
-    );
-    
-    // Confirmar la transacción
-    await pool.query('COMMIT');
+    // Primero creamos el producto
+    const result = await pool.query(`
+      INSERT INTO producto 
+      (codproducto, nombreproducto, modeloproducto, descripcionproducto, demanda, stockseguridad, estadoproducto) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7) 
+      RETURNING *
+    `, [codproducto, nombreproducto, modeloproducto, descripcionproducto, demanda, stockseguridad, estadoproducto]);
 
-    res.status(201).json(nuevoProducto);
+    // Luego creamos el inventario con el mismo stock de seguridad
+    await pool.query(`
+      INSERT INTO inventario 
+      (idproducto, stock, puntopedido, stockseguridad, loteoptimo) 
+      VALUES ($1, 0, 0, $2, 1)
+    `, [result.rows[0].idproducto, stockseguridad]);
+
+    res.status(201).json(result.rows[0]);
   } catch (error) {
-    // Revertir la transacción en caso de error
-    await pool.query('ROLLBACK');
-    
     console.error('Error al crear producto:', error);
     res.status(500).json({ error: 'Error al crear producto: ' + error.message });
   }
 };
 
 export const updateProducto = async (req, res) => {
-  const { id } = req.params;
-  const {
-    codproducto,
-    nombreproducto,
-    modeloproducto,
-    descripcionproducto,
-    demanda,
-    stockseguridad,
-    estadoproducto
-  } = req.body;
-
   try {
-    const result = await pool.query(
-      `UPDATE producto 
-       SET codproducto = COALESCE($1, codproducto),
-           nombreproducto = COALESCE($2, nombreproducto),
-           modeloproducto = COALESCE($3, modeloproducto),
-           descripcionproducto = COALESCE($4, descripcionproducto),
-           demanda = COALESCE($5, demanda),
-           stockseguridad = COALESCE($6, stockseguridad),
-           estadoproducto = COALESCE($7, estadoproducto),
-           fechamodificacionproducto = CURRENT_DATE
-       WHERE idproducto = $8
-       RETURNING *`,
-      [codproducto, nombreproducto, modeloproducto, descripcionproducto, demanda, stockseguridad, estadoproducto, id]
-    );
+    const { id } = req.params;
+    const { 
+      codproducto, 
+      nombreproducto, 
+      modeloproducto, 
+      descripcionproducto, 
+      demanda,
+      stockseguridad,
+      estadoproducto 
+    } = req.body;
+
+    // Primero actualizamos el producto
+    const result = await pool.query(`
+      UPDATE producto 
+      SET codproducto = $1,
+          nombreproducto = $2,
+          modeloproducto = $3,
+          descripcionproducto = $4,
+          demanda = $5,
+          stockseguridad = $6,
+          estadoproducto = $7,
+          fechamodificacionproducto = CURRENT_DATE
+      WHERE idproducto = $8
+      RETURNING *
+    `, [codproducto, nombreproducto, modeloproducto, descripcionproducto, demanda, stockseguridad, estadoproducto, id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Producto no encontrado' });
     }
+
+    // Luego actualizamos el stock de seguridad en el inventario
+    await pool.query(`
+      UPDATE inventario 
+      SET stockseguridad = $1
+      WHERE idproducto = $2
+    `, [stockseguridad, id]);
 
     res.json(result.rows[0]);
   } catch (error) {
