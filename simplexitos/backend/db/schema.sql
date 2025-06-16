@@ -48,7 +48,7 @@ CREATE TABLE inventario (
     puntopedido                     INT NOT NULL,
     stockseguridad                  INT NOT NULL,
     loteoptimo                      INT NOT NULL,
-    modeloinventario                VARCHAR(50),
+    modeloinventario                tipo_modelo DEFAULT 'LOTE_FIJO',
     cgi                             DOUBLE PRECISION,
     frecuenciadereabastecimiento    INT
 );

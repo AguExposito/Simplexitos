@@ -176,29 +176,43 @@ const solicitarConfirmacion = () => {
 async function calcularloteoptimo(idproducto) {
     try {
         const result = await pool.query(`
-            SELECT i.*, pp.costopedido, pp.costoalmacenamiento
+            SELECT 
+                i.*,
+                p.demanda,
+                pp.costopedido,
+                pp.costoalmacenamiento,
+                pp.preciounitario
             FROM inventario i
-            JOIN proveedor_producto pp ON i.idproducto = pp.idproducto
+            JOIN producto p ON i.idproducto = p.idproducto
+            LEFT JOIN proveedor_producto pp ON i.idproducto = pp.idproducto
             WHERE i.idproducto = $1
             ORDER BY pp.preciounitario ASC
             LIMIT 1
         `, [idproducto]);
 
         if (result.rows.length === 0) {
+            console.error('No se encontró información del producto:', idproducto);
             throw new Error('No se encontró información del producto');
         }
 
         const { demanda, costopedido, costoalmacenamiento } = result.rows[0];
         
+        if (!demanda || !costopedido || !costoalmacenamiento) {
+            console.error('Faltan datos necesarios para el cálculo:', {
+                idproducto,
+                demanda,
+                costopedido,
+                costoalmacenamiento
+            });
+            throw new Error('Faltan datos necesarios para el cálculo del lote óptimo');
+        }
+
         // Fórmula EOQ: Q* = sqrt((2 * D * S) / H)
-        // Donde:
-        // D = demanda anual
-        // S = costo de pedido
-        // H = costo de almacenamiento por unidad
         const loteoptimo = Math.sqrt((2 * demanda * costopedido) / costoalmacenamiento);
 
         return { loteoptimo, demanda };
     } catch (error) {
+        console.error('Error en calcularloteoptimo:', error);
         throw new Error(`Error al calcular el Lote Óptimo: ${error.message}`);
     }
 }
@@ -280,19 +294,36 @@ async function calcularCostoTotal(idproducto, cantidadPedir) {
 async function calcularPeriodoFijo(idproducto) {
     try {
         const result = await pool.query(`
-            SELECT i.*, pp.costopedido, pp.costoalmacenamiento
+            SELECT 
+                i.*,
+                p.demanda,
+                pp.costopedido,
+                pp.costoalmacenamiento,
+                pp.preciounitario
             FROM inventario i
-            JOIN proveedor_producto pp ON i.idproducto = pp.idproducto
+            JOIN producto p ON i.idproducto = p.idproducto
+            LEFT JOIN proveedor_producto pp ON i.idproducto = pp.idproducto
             WHERE i.idproducto = $1
             ORDER BY pp.preciounitario ASC
             LIMIT 1
         `, [idproducto]);
 
         if (result.rows.length === 0) {
+            console.error('No se encontró información del producto:', idproducto);
             throw new Error('No se encontró información del producto');
         }
 
         const { demanda, costopedido, costoalmacenamiento } = result.rows[0];
+
+        if (!demanda || !costopedido || !costoalmacenamiento) {
+            console.error('Faltan datos necesarios para el cálculo:', {
+                idproducto,
+                demanda,
+                costopedido,
+                costoalmacenamiento
+            });
+            throw new Error('Faltan datos necesarios para el cálculo del periodo fijo');
+        }
 
         // Calcular el tiempo óptimo entre pedidos (T*)
         // T* = sqrt((2 * S) / (D * H))
@@ -307,6 +338,7 @@ async function calcularPeriodoFijo(idproducto) {
             frecuenciaPedidos: 1 / tiempoOptimo // Número de pedidos por año
         };
     } catch (error) {
+        console.error('Error en calcularPeriodoFijo:', error);
         throw new Error(`Error al calcular el modelo de Periodo Fijo: ${error.message}`);
     }
 }
@@ -548,114 +580,171 @@ export const createInventario = async (req, res) => {
 
 // Modificar la función de actualización de inventario para incluir los cálculos
 export const updateInventario = async (req, res) => {
+    const client = await pool.connect();
     try {
         const { id } = req.params;
         const { stock, puntopedido, stockseguridad, modeloinventario } = req.body;
         
+        // Validate modeloinventario
+        if (modeloinventario && !['LOTE_FIJO', 'PERIODO_FIJO'].includes(modeloinventario)) {
+            return res.status(400).json({ 
+                error: 'Modelo de inventario inválido',
+                details: 'El modelo debe ser LOTE_FIJO o PERIODO_FIJO'
+            });
+        }
+
         console.log('Actualizando inventario:', { id, stock, puntopedido, stockseguridad, modeloinventario });
 
-        // Primero verificamos que el inventario existe
-        const inventarioCheck = await pool.query(
-            'SELECT * FROM inventario WHERE idinventario = $1',
-            [id]
-        );
+        await client.query('BEGIN');
+
+        // Primero verificamos que el inventario existe y obtenemos el producto asociado
+        const inventarioCheck = await client.query(`
+            SELECT i.*, p.idproducto, p.modeloproducto, p.demanda
+            FROM inventario i
+            JOIN producto p ON i.idproducto = p.idproducto
+            WHERE i.idinventario = $1
+        `, [id]);
 
         if (inventarioCheck.rows.length === 0) {
-            console.log('Inventario no encontrado:', id);
+            await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Inventario no encontrado' });
         }
 
         const idproducto = inventarioCheck.rows[0].idproducto;
+        const modeloActual = inventarioCheck.rows[0].modeloinventario;
+        const modeloProducto = inventarioCheck.rows[0].modeloproducto;
 
-        // Actualizar el modelo en la tabla producto si se proporciona
-        if (modeloinventario) {
-            try {
-                await pool.query(`
-                    UPDATE producto 
-                    SET modeloproducto = $1,
-                        fechamodificacionproducto = CURRENT_DATE
-                    WHERE idproducto = $2
-                `, [modeloinventario, idproducto]);
-            } catch (error) {
-                console.error('Error al actualizar modelo del producto:', error);
-                // Continuamos con la actualización del inventario aunque falle la actualización del modelo
-            }
+        // Si el modelo ha cambiado, actualizamos tanto el producto como el inventario
+        if (modeloinventario && modeloinventario !== modeloActual) {
+            console.log('Actualizando modelo:', { idproducto, modeloinventario });
+            
+            // Actualizar el modelo en la tabla producto
+            await client.query(`
+                UPDATE producto 
+                SET modeloproducto = $1,
+                    fechamodificacionproducto = CURRENT_DATE
+                WHERE idproducto = $2
+            `, [modeloinventario, idproducto]);
+
+            // Actualizar el modelo en la tabla inventario
+            await client.query(`
+                UPDATE inventario 
+                SET modeloinventario = $1
+                WHERE idinventario = $2
+            `, [modeloinventario, id]);
         }
 
-        // Actualizar el inventario con los valores proporcionados
-        const result = await pool.query(`
+        // Actualizar el resto de los campos del inventario
+        const result = await client.query(`
             UPDATE inventario 
             SET stock = COALESCE($1, stock),
                 puntopedido = COALESCE($2, puntopedido),
-                stockseguridad = COALESCE($3, stockseguridad),
-                modeloinventario = COALESCE($4, modeloinventario)
-            WHERE idinventario = $5
+                stockseguridad = COALESCE($3, stockseguridad)
+            WHERE idinventario = $4
             RETURNING *
-        `, [stock, puntopedido, stockseguridad, modeloinventario, id]);
+        `, [stock, puntopedido, stockseguridad, id]);
 
         if (result.rows.length === 0) {
-            console.log('No se pudo actualizar el inventario:', id);
+            await client.query('ROLLBACK');
             return res.status(404).json({ error: 'No se pudo actualizar el inventario' });
         }
 
-        // Si la actualización fue exitosa, calculamos los costos
-        try {
-            let loteoptimo = 1;
-            let costos = {
-                costoCompra: 0,
-                costoPedido: 0,
-                costoAlmacenamiento: 0,
-                costoTotal: 0
-            };
+        // Verificar si hay datos necesarios para los cálculos
+        const proveedorCheck = await client.query(`
+            SELECT pp.*, p.demanda
+            FROM proveedor_producto pp
+            JOIN producto p ON pp.idproducto = p.idproducto
+            WHERE pp.idproducto = $1
+            ORDER BY pp.preciounitario ASC
+            LIMIT 1
+        `, [idproducto]);
 
-            if (modeloinventario === 'LOTE_FIJO') {
-                const eoqResult = await calcularloteoptimo(idproducto);
-                loteoptimo = Math.round(eoqResult.loteoptimo);
-                costos = await calcularCostoTotal(idproducto, loteoptimo);
-            } else if (modeloinventario === 'PERIODO_FIJO') {
-                const periodoResult = await calcularPeriodoFijo(idproducto);
-                loteoptimo = Math.round(periodoResult.cantidadPedir);
-                costos = await calcularCostoTotal(idproducto, loteoptimo);
+        const tieneDatosProveedor = proveedorCheck.rows.length > 0;
+
+        // Solo calcular costos si tenemos datos del proveedor
+        if (tieneDatosProveedor) {
+            try {
+                // Calcular costos basados en el modelo actual
+                const modeloFinal = modeloinventario || modeloActual;
+                let loteoptimo = 1;
+                let costos = {
+                    costoCompra: 0,
+                    costoPedido: 0,
+                    costoAlmacenamiento: 0,
+                    costoTotal: 0
+                };
+
+                const { demanda, costopedido, costoalmacenamiento, preciounitario } = proveedorCheck.rows[0];
+
+                if (modeloFinal === 'LOTE_FIJO') {
+                    // Fórmula EOQ: Q* = sqrt((2 * D * S) / H)
+                    loteoptimo = Math.sqrt((2 * demanda * costopedido) / costoalmacenamiento);
+                    
+                    // Calcular costos
+                    costos.costoCompra = demanda * preciounitario;
+                    costos.costoPedido = (demanda / loteoptimo) * costopedido;
+                    costos.costoAlmacenamiento = (loteoptimo / 2) * costoalmacenamiento;
+                    costos.costoTotal = costos.costoCompra + costos.costoPedido + costos.costoAlmacenamiento;
+                } else if (modeloFinal === 'PERIODO_FIJO') {
+                    // Calcular el tiempo óptimo entre pedidos (T*)
+                    const tiempoOptimo = Math.sqrt((2 * costopedido) / (demanda * costoalmacenamiento));
+                    loteoptimo = demanda * tiempoOptimo;
+                    
+                    // Calcular costos
+                    costos.costoCompra = demanda * preciounitario;
+                    costos.costoPedido = (demanda / loteoptimo) * costopedido;
+                    costos.costoAlmacenamiento = (loteoptimo / 2) * costoalmacenamiento;
+                    costos.costoTotal = costos.costoCompra + costos.costoPedido + costos.costoAlmacenamiento;
+                }
+
+                // Actualizar los costos
+                await client.query(`
+                    UPDATE inventario 
+                    SET loteoptimo = $1,
+                        costocompra = $2,
+                        costopedido = $3,
+                        costoalmacenamiento = $4,
+                        cgi = $5,
+                        frecuenciadereabastecimiento = $6
+                    WHERE idinventario = $7
+                `, [
+                    Math.round(loteoptimo),
+                    costos.costoCompra,
+                    costos.costoPedido,
+                    costos.costoAlmacenamiento,
+                    costos.costoTotal,
+                    modeloFinal === 'PERIODO_FIJO' ? Math.round(1 / Math.sqrt((2 * costopedido) / (demanda * costoalmacenamiento))) : null,
+                    id
+                ]);
+            } catch (error) {
+                console.error('Error al calcular costos:', error);
+                // No hacemos ROLLBACK aquí, solo registramos el error
+                // Los costos se mantendrán en 0
             }
-
-            // Actualizar los costos
-            await pool.query(`
-                UPDATE inventario 
-                SET loteoptimo = $1,
-                    costocompra = $2,
-                    costopedido = $3,
-                    costoalmacenamiento = $4,
-                    cgi = $5
-                WHERE idinventario = $6
-            `, [
-                loteoptimo,
-                costos.costoCompra,
-                costos.costoPedido,
-                costos.costoAlmacenamiento,
-                costos.costoTotal,
-                id
-            ]);
-
-            // Obtener el inventario actualizado con todos los cambios
-            const finalResult = await pool.query(
-                'SELECT * FROM inventario WHERE idinventario = $1',
-                [id]
-            );
-
-            console.log('Inventario actualizado exitosamente:', finalResult.rows[0]);
-            res.json(finalResult.rows[0]);
-        } catch (error) {
-            console.error('Error al calcular costos:', error);
-            // Si hay error en el cálculo de costos, devolvemos el inventario actualizado sin los costos
-            res.json(result.rows[0]);
+        } else {
+            console.log('No se calcularon costos: No hay datos del proveedor');
         }
+
+        await client.query('COMMIT');
+
+        // Obtener el inventario actualizado con todos los cambios
+        const finalResult = await client.query(`
+            SELECT i.*, p.modeloproducto
+            FROM inventario i
+            JOIN producto p ON i.idproducto = p.idproducto
+            WHERE i.idinventario = $1
+        `, [id]);
+
+        res.json(finalResult.rows[0]);
     } catch (error) {
+        await client.query('ROLLBACK');
         console.error('Error al actualizar inventario:', error);
         res.status(500).json({ 
             error: 'Error al actualizar inventario',
-            details: error.message,
-            stack: error.stack
+            details: error.message
         });
+    } finally {
+        client.release();
     }
 };
 
@@ -736,58 +825,45 @@ export const updateInventarioByProducto = async (req, res) => {
 };
 
 export const getValorTotalInventario = async (req, res) => {
-  try {
-    console.log('Calculando valor total del inventario');
-    
-    // Obtenemos el valor total del inventario en una sola consulta
-    const result = await pool.query(`
-      WITH valor_total AS (
-        SELECT 
-          COALESCE(SUM(i.stock * COALESCE(pp.preciounitario, 0)), 0) as valor_total
-        FROM inventario i
-        LEFT JOIN proveedor_producto pp ON i.idproducto = pp.idproducto
-        WHERE i.stock > 0
-      ),
-      conteo AS (
-        SELECT 
-          COUNT(DISTINCT i.idproducto) as total_productos,
-          COALESCE(SUM(i.stock), 0) as total_unidades
-        FROM inventario i
-        WHERE i.stock > 0
-      )
-      SELECT 
-        vt.valor_total,
-        c.total_productos,
-        c.total_unidades
-      FROM valor_total vt
-      CROSS JOIN conteo c
-    `);
+    const client = await pool.connect();
+    try {
+        const result = await client.query(`
+            WITH valor_total AS (
+                SELECT 
+                    COALESCE(SUM(i.stock * COALESCE(pp.preciounitario, 0)), 0) as valor_total
+                FROM inventario i
+                LEFT JOIN proveedor_producto pp ON i.idproducto = pp.idproducto
+                WHERE i.stock > 0
+            ),
+            conteo AS (
+                SELECT 
+                    COUNT(DISTINCT i.idproducto) as total_productos,
+                    COALESCE(SUM(i.stock), 0) as total_unidades
+                FROM inventario i
+                WHERE i.stock > 0
+            )
+            SELECT 
+                COALESCE(vt.valor_total, 0) as valor_total,
+                COALESCE(c.total_productos, 0) as total_productos,
+                COALESCE(c.total_unidades, 0) as total_unidades
+            FROM valor_total vt
+            CROSS JOIN conteo c
+        `);
 
-    console.log('Resultado de la consulta:', result.rows);
+        const resultado = {
+            valor_total: Number(result.rows[0]?.valor_total || 0),
+            total_productos: Number(result.rows[0]?.total_productos || 0),
+            total_unidades: Number(result.rows[0]?.total_unidades || 0)
+        };
 
-    if (result.rows.length === 0) {
-      console.log('No se encontraron resultados');
-      return res.json({
-        valor_total: 0,
-        total_productos: 0,
-        total_unidades: 0
-      });
+        res.json(resultado);
+    } catch (error) {
+        console.error('Error al calcular valor total del inventario:', error);
+        res.status(500).json({ 
+            error: 'Error al calcular valor total del inventario',
+            details: error.message
+        });
+    } finally {
+        client.release();
     }
-
-    const resultado = {
-      valor_total: Number(result.rows[0].valor_total || 0),
-      total_productos: Number(result.rows[0].total_productos || 0),
-      total_unidades: Number(result.rows[0].total_unidades || 0)
-    };
-
-    console.log('Resultado final del cálculo:', resultado);
-    res.json(resultado);
-  } catch (error) {
-    console.error('Error al calcular valor total del inventario:', error);
-    res.status(500).json({ 
-      error: 'Error al calcular valor total del inventario',
-      details: error.message,
-      stack: error.stack
-    });
-  }
 };

@@ -28,7 +28,7 @@ export default function InventarioForm({ isOpen, onClose, inventarioId, productI
     puntopedido: 0,
     stockseguridad: 0,
     loteoptimo: 10,
-    modeloinventario: 'Lote Fijo'
+    modeloinventario: 'LOTE_FIJO'
   });
   const [loading, setLoading] = useState(false);
   const toast = useToast();
@@ -56,7 +56,7 @@ export default function InventarioForm({ isOpen, onClose, inventarioId, productI
         puntopedido: data.puntopedido || 0,
         stockseguridad: data.stockseguridad || 0,
         loteoptimo: data.loteoptimo || 10,
-        modeloinventario: data.modeloinventario || 'Lote Fijo'
+        modeloinventario: data.modeloinventario || 'LOTE_FIJO'
       });
     } catch (error) {
       console.error('Error fetching inventario:', error);
@@ -115,9 +115,10 @@ export default function InventarioForm({ isOpen, onClose, inventarioId, productI
         body: JSON.stringify(numericFormData),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Error: ${response.status}`);
+        throw new Error(data.details || data.error || `Error: ${response.status}`);
       }
 
       toast({
@@ -137,9 +138,9 @@ export default function InventarioForm({ isOpen, onClose, inventarioId, productI
       console.error('Error updating inventario:', error);
       toast({
         title: 'Error',
-        description: `No se pudo actualizar el inventario: ${error.message}`,
+        description: error.message || 'No se pudo actualizar el inventario',
         status: 'error',
-        duration: 3000,
+        duration: 5000,
         isClosable: true,
       });
     } finally {
@@ -155,6 +156,18 @@ export default function InventarioForm({ isOpen, onClose, inventarioId, productI
         <ModalCloseButton />
         <form onSubmit={handleSubmit}>
           <ModalBody>
+            <FormControl mb={4}>
+              <FormLabel>Modelo de Inventario</FormLabel>
+              <Select
+                name="modeloinventario"
+                value={formData.modeloinventario}
+                onChange={handleChange}
+              >
+                <option value="LOTE_FIJO">Lote Fijo</option>
+                <option value="PERIODO_FIJO">Período Fijo</option>
+              </Select>
+            </FormControl>
+
             <FormControl mb={4}>
               <FormLabel>Stock Actual</FormLabel>
               <NumberInput 
@@ -199,45 +212,12 @@ export default function InventarioForm({ isOpen, onClose, inventarioId, productI
                 </NumberInputStepper>
               </NumberInput>
             </FormControl>
-            
-            <FormControl mb={4}>
-              <FormLabel>Lote Óptimo</FormLabel>
-              <NumberInput 
-                min={1} 
-                value={formData.loteoptimo}
-                onChange={(value) => handleNumberChange('loteoptimo', value)}
-              >
-                <NumberInputField />
-                <NumberInputStepper>
-                  <NumberIncrementStepper />
-                  <NumberDecrementStepper />
-                </NumberInputStepper>
-              </NumberInput>
-            </FormControl>
-            
-            <FormControl mb={4}>
-              <FormLabel>Modelo de Inventario</FormLabel>
-              <Select
-                name="modeloinventario"
-                value={formData.modeloinventario}
-                onChange={handleChange}
-              >
-                <option value="Lote Fijo">Lote Fijo</option>
-                <option value="Periodo Fijo">Periodo Fijo</option>
-              </Select>
-            </FormControl>
           </ModalBody>
           <ModalFooter>
-            <Button variant="ghost" mr={3} onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button 
-              colorScheme="blue" 
-              type="submit"
-              isLoading={loading}
-            >
+            <Button colorScheme="blue" mr={3} type="submit" isLoading={loading}>
               Guardar
             </Button>
+            <Button variant="ghost" onClick={onClose}>Cancelar</Button>
           </ModalFooter>
         </form>
       </ModalContent>
