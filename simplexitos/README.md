@@ -68,3 +68,48 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+# Simplexitos - Sistema de Gestión de Inventarios
+
+## Validaciones de Baja de Productos
+
+### Control de Baja contra Órdenes de Compra
+
+El sistema implementa validaciones estrictas para evitar la baja de productos cuando:
+
+1. **Órdenes de Compra Activas**: No se permite eliminar un producto si tiene órdenes de compra con estado:
+   - `ABIERTA` (pendiente)
+   - `RECIBIDA` (enviada/recibida)
+
+2. **Stock Disponible**: No se permite eliminar un producto si tiene unidades en stock (stock > 0).
+
+### Estados de Órdenes de Compra
+
+- **ABIERTA**: Orden pendiente de procesamiento
+- **RECIBIDA**: Orden enviada y recibida
+- **CANCELADA**: Orden cancelada (no impide la baja)
+
+### Proceso de Baja
+
+Para poder eliminar un producto, el usuario debe:
+
+1. **Vender o transferir todo el stock** del producto
+2. **Cancelar todas las órdenes de compra** pendientes o enviadas
+3. Una vez cumplidas estas condiciones, el sistema permitirá la eliminación
+
+### Interfaz de Usuario
+
+- La tabla de productos muestra el **stock actual** de cada producto
+- Los botones de eliminar se muestran en gris cuando el producto no puede ser eliminado
+- Al intentar eliminar, el sistema muestra mensajes detallados explicando por qué no se puede proceder
+
+### Endpoints de API
+
+- `GET /producto/:id/status` - Verifica el estado de un producto antes de eliminar
+- `DELETE /producto/:id` - Elimina un producto (con validaciones)
+
+### Mensajes de Error
+
+El sistema proporciona mensajes específicos como:
+- "El producto tiene X unidades en stock. Debe vender o transferir todo el stock antes de eliminar el producto."
+- "El producto tiene X orden(es) pendiente(s) y Y enviada(s). Debe cancelar todas las órdenes antes de eliminar el producto."

@@ -24,6 +24,7 @@ import {
   Heading,
   HStack,
   Text,
+  Badge,
 } from '@chakra-ui/react';
 import { AddIcon, EditIcon, DeleteIcon } from '@chakra-ui/icons';
 import { API_BASE_URL } from '../config';
@@ -143,8 +144,37 @@ export default function Productos() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('¿Está seguro de eliminar este producto?')) {
-      try {
+    try {
+      // Primero verificar el estado del producto
+      const statusResponse = await fetch(`${API_BASE_URL}/producto/${id}/status`);
+      const statusData = await statusResponse.json();
+      
+      if (!statusData.canDelete) {
+        let message = `No se puede eliminar el producto "${statusData.producto.nombreproducto}":\n\n`;
+        
+        if (statusData.reasons.hasStock) {
+          message += `• Tiene ${statusData.stock} unidades en stock\n`;
+        }
+        
+        if (statusData.reasons.hasActiveOrders) {
+          message += `• Tiene ${statusData.ordenesPendientes.length} orden(es) pendiente(s)\n`;
+          message += `• Tiene ${statusData.ordenesEnviadas.length} orden(es) enviada(s)\n`;
+        }
+        
+        message += '\nDebe resolver estos problemas antes de eliminar el producto.';
+        
+        toast({
+          title: 'No se puede eliminar',
+          description: message,
+          status: 'warning',
+          duration: 8000,
+          isClosable: true,
+        });
+        return;
+      }
+      
+      // Si puede eliminarse, confirmar
+      if (window.confirm(`¿Está seguro de eliminar el producto "${statusData.producto.nombreproducto}"?`)) {
         const response = await fetch(`${API_BASE_URL}/producto/${id}`, {
           method: 'DELETE',
         });
@@ -158,16 +188,27 @@ export default function Productos() {
             isClosable: true,
           });
           fetchProductos();
+        } else {
+          // Manejar errores específicos de validación
+          const errorData = await response.json();
+          toast({
+            title: 'Error',
+            description: errorData.details || errorData.error || 'Hubo un error al eliminar el producto',
+            status: 'error',
+            duration: 5000,
+            isClosable: true,
+          });
         }
-      } catch (error) {
-        toast({
-          title: 'Error',
-          description: 'Hubo un error al eliminar el producto',
-          status: 'error',
-          duration: 3000,
-          isClosable: true,
-        });
       }
+    } catch (error) {
+      console.error('Error al verificar estado del producto:', error);
+      toast({
+        title: 'Error',
+        description: 'Hubo un error al verificar el estado del producto',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
     }
   };
 
@@ -183,6 +224,14 @@ export default function Productos() {
       stockseguridad: '',
     });
     onOpen();
+  };
+
+  const getStockBadge = (stock) => {
+    if (stock > 0) {
+      return <Badge colorScheme="green">{stock} unidades</Badge>;
+    } else {
+      return <Badge colorScheme="gray">Sin stock</Badge>;
+    }
   };
 
   const handleDetailClick = (producto) => {
@@ -213,6 +262,7 @@ export default function Productos() {
               <Th>Modelo</Th>
               <Th>Demanda Anual</Th>
               <Th>Stock Seguridad</Th>
+              <Th>Stock Actual</Th>
               <Th>Estado</Th>
               <Th>Acciones</Th>
             </Tr>
@@ -225,6 +275,7 @@ export default function Productos() {
                 <Td>{producto.modeloproducto}</Td>
                 <Td>{producto.demanda?.toFixed(2) || '0.00'} unidades/año</Td>
                 <Td>{producto.stockseguridad}</Td>
+                <Td>{getStockBadge(producto.stockactual)}</Td>
                 <Td>{producto.estadoproducto}</Td>
                 <Td>
                   <HStack spacing={2}>
@@ -245,8 +296,9 @@ export default function Productos() {
                     <Button
                       size="sm"
                       leftIcon={<DeleteIcon />}
-                      colorScheme="red"
+                      colorScheme={producto.stockactual > 0 ? "gray" : "red"}
                       onClick={() => handleDelete(producto.idproducto)}
+                      title={producto.stockactual > 0 ? "No se puede eliminar: tiene stock" : "Eliminar producto"}
                     >
                       Eliminar
                     </Button>
