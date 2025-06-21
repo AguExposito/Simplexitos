@@ -34,7 +34,7 @@ CREATE TABLE proveedor_producto (
   costocompra                   DOUBLE PRECISION NOT NULL,
   preciounitario                DOUBLE PRECISION NOT NULL,
   tiempoenvio                   INT NOT NULL,  
-  --frecuenciadereabastecimiento  INT,
+  frecuenciadereabastecimiento  INT,
   UNIQUE (idproducto, idproveedor)
 );
 
@@ -51,7 +51,7 @@ CREATE TABLE inventario (
     loteoptimo                      INT NOT NULL,
     modeloinventario                tipo_modelo DEFAULT 'LOTE_FIJO',
     cgi                             DOUBLE PRECISION,
-    frecuenciadereabastecimiento    INT
+    --frecuenciadereabastecimiento    INT
 );
 
 CREATE TABLE venta (
