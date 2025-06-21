@@ -44,9 +44,9 @@ export const getInventarioById = async (req, res) => {
                 i.*,
                 p.nombreproducto,
                 p.demanda,
+                p.costoalmacenamiento,
                 pp.preciounitario,
-                pp.costopedido,
-                pp.costoalmacenamiento
+                pp.costopedido
             FROM inventario i
             LEFT JOIN producto p ON i.idproducto = p.idproducto
             LEFT JOIN proveedor_producto pp ON i.idproducto = pp.idproducto
@@ -179,8 +179,8 @@ async function calcularloteoptimo(idproducto) {
             SELECT 
                 i.*,
                 p.demanda,
+                p.costoalmacenamiento,
                 pp.costopedido,
-                pp.costoalmacenamiento,
                 pp.preciounitario
             FROM inventario i
             JOIN producto p ON i.idproducto = p.idproducto
@@ -225,7 +225,7 @@ async function calcularCostoTotal(idproducto, cantidadPedir) {
                 i.*,
                 pp.preciounitario,
                 pp.costopedido,
-                pp.costoalmacenamiento,
+                p.costoalmacenamiento,
                 p.demanda
             FROM inventario i
             JOIN producto p ON i.idproducto = p.idproducto

@@ -49,6 +49,8 @@ export default function Inventario() {
   });
   const [selectedInventario, setSelectedInventario] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [filtroEstado, setFiltroEstado] = useState('TODOS');
+  const [filtroStock, setFiltroStock] = useState('TODOS');
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
   const [formData, setFormData] = useState({
@@ -143,6 +145,95 @@ export default function Inventario() {
     }
   };
 
+  // Función para filtrar inventario por estado del producto
+  const getInventarioFiltrado = () => {
+    let inventarioFiltrado = inventario;
+    
+    // Filtro por estado del producto
+    if (filtroEstado !== 'TODOS') {
+      inventarioFiltrado = inventarioFiltrado.filter(item => {
+        const producto = productos.find(p => p.idproducto === item.idproducto);
+        return producto && producto.estadoproducto === filtroEstado;
+      });
+    }
+    
+    // Filtro por stock
+    if (filtroStock !== 'TODOS') {
+      inventarioFiltrado = inventarioFiltrado.filter(item => {
+        switch (filtroStock) {
+          case 'SIN_STOCK':
+            return item.stock === 0;
+          case 'STOCK_BAJO':
+            return item.stock > 0 && item.stock < item.stockseguridad;
+          case 'STOCK_MEDIO':
+            return item.stock >= item.stockseguridad && item.stock <= item.puntopedido;
+          case 'STOCK_ALTO':
+            return item.stock > item.puntopedido;
+          default:
+            return true;
+        }
+      });
+    }
+    
+    return inventarioFiltrado;
+  };
+
+  const handleFiltroChange = (nuevoFiltro) => {
+    setFiltroEstado(nuevoFiltro);
+  };
+
+  const handleFiltroStockChange = (nuevoFiltro) => {
+    setFiltroStock(nuevoFiltro);
+  };
+
+  const handleExportar = () => {
+    const inventarioFiltrado = getInventarioFiltrado();
+    const datosExportar = inventarioFiltrado.map(item => {
+      const producto = productos.find(p => p.idproducto === item.idproducto);
+      const status = getStockStatus(item.stock, item.stockseguridad, item.puntopedido);
+      
+      return {
+        ID: item.idinventario,
+        Producto: producto?.nombreproducto || 'N/A',
+        Estado_Producto: producto?.estadoproducto || 'N/A',
+        Stock: item.stock,
+        Estado_Stock: status.text,
+        Punto_Pedido: item.puntopedido,
+        Stock_Seguridad: item.stockseguridad,
+        Lote_Optimo: item.loteoptimo,
+        Costo_Compra: item.costocompra || 0,
+        Costo_Pedido: item.costopedido || 0,
+        Costo_Almacenamiento: item.costoalmacenamiento || 0,
+        CGI: item.cgi || 0
+      };
+    });
+
+    const csvContent = [
+      Object.keys(datosExportar[0] || {}).join(','),
+      ...datosExportar.map(row => Object.values(row).join(','))
+    ].join('\n');
+
+    // Crear nombre del archivo con información de filtros
+    let nombreArchivo = 'inventario';
+    if (filtroEstado !== 'TODOS') {
+      nombreArchivo += `_${filtroEstado.toLowerCase()}`;
+    }
+    if (filtroStock !== 'TODOS') {
+      nombreArchivo += `_${filtroStock.toLowerCase()}`;
+    }
+    nombreArchivo += `_${new Date().toISOString().split('T')[0]}.csv`;
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', nombreArchivo);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleEdit = (item) => {
     setSelectedInventario(item);
     setIsEditModalOpen(true);
@@ -211,15 +302,143 @@ export default function Inventario() {
       <Container maxW="container.xl">
         <Heading mb={6}>Inventario</Heading>
         
+        {/* Indicador del filtro activo */}
+        {(filtroEstado !== 'TODOS' || filtroStock !== 'TODOS') && (
+          <Box mb={4} p={3} bg="blue.50" borderRadius="md">
+            <HStack justify="space-between">
+              <VStack align="start" spacing={1}>
+                {filtroEstado !== 'TODOS' && (
+                  <Text fontSize="sm" fontWeight="bold" color="blue.700">
+                    Estado: {filtroEstado === 'ACTIVO' ? 'Productos activos' : 'Productos inactivos'}
+                  </Text>
+                )}
+                {filtroStock !== 'TODOS' && (
+                  <Text fontSize="sm" fontWeight="bold" color="blue.700">
+                    Stock: {
+                      filtroStock === 'SIN_STOCK' ? 'Sin stock' :
+                      filtroStock === 'STOCK_BAJO' ? 'Stock bajo' :
+                      filtroStock === 'STOCK_MEDIO' ? 'Stock medio' :
+                      filtroStock === 'STOCK_ALTO' ? 'Stock alto' : 'Todos'
+                    }
+                  </Text>
+                )}
+              </VStack>
+              <Button
+                size="xs"
+                variant="ghost"
+                onClick={() => {
+                  handleFiltroChange('TODOS');
+                  handleFiltroStockChange('TODOS');
+                }}
+                color="blue.700"
+              >
+                Limpiar filtros
+              </Button>
+            </HStack>
+          </Box>
+        )}
+        
+        {/* Botones de filtro por estado */}
+        <Box mb={6}>
+          <HStack spacing={4} justify="space-between">
+            <HStack spacing={4}>
+              <Text fontWeight="bold">Filtrar por estado:</Text>
+              <Button
+                size="sm"
+                colorScheme={filtroEstado === 'TODOS' ? 'blue' : 'gray'}
+                onClick={() => handleFiltroChange('TODOS')}
+              >
+                Todos ({inventario.length})
+              </Button>
+              <Button
+                size="sm"
+                colorScheme={filtroEstado === 'ACTIVO' ? 'green' : 'gray'}
+                onClick={() => handleFiltroChange('ACTIVO')}
+              >
+                Activos ({inventario.filter(item => {
+                  const producto = productos.find(p => p.idproducto === item.idproducto);
+                  return producto && producto.estadoproducto === 'ACTIVO';
+                }).length})
+              </Button>
+              <Button
+                size="sm"
+                colorScheme={filtroEstado === 'INACTIVO' ? 'red' : 'gray'}
+                onClick={() => handleFiltroChange('INACTIVO')}
+              >
+                Inactivos ({inventario.filter(item => {
+                  const producto = productos.find(p => p.idproducto === item.idproducto);
+                  return producto && producto.estadoproducto === 'INACTIVO';
+                }).length})
+              </Button>
+            </HStack>
+            <HStack spacing={4}>
+              <Text fontSize="sm" color="gray.500">
+                Mostrando {getInventarioFiltrado().length} de {inventario.length} productos
+              </Text>
+              {getInventarioFiltrado().length > 0 && (
+                <Button
+                  size="sm"
+                  colorScheme="teal"
+                  onClick={handleExportar}
+                >
+                  Exportar CSV
+                </Button>
+              )}
+            </HStack>
+          </HStack>
+        </Box>
+
+        {/* Botones de filtro por stock */}
+        <Box mb={6}>
+          <HStack spacing={4}>
+            <Text fontWeight="bold">Filtrar por stock:</Text>
+            <Button
+              size="sm"
+              colorScheme={filtroStock === 'TODOS' ? 'blue' : 'gray'}
+              onClick={() => handleFiltroStockChange('TODOS')}
+            >
+              Todos ({inventario.length})
+            </Button>
+            <Button
+              size="sm"
+              colorScheme={filtroStock === 'SIN_STOCK' ? 'red' : 'gray'}
+              onClick={() => handleFiltroStockChange('SIN_STOCK')}
+            >
+              Sin Stock ({inventario.filter(item => item.stock === 0).length})
+            </Button>
+            <Button
+              size="sm"
+              colorScheme={filtroStock === 'STOCK_BAJO' ? 'orange' : 'gray'}
+              onClick={() => handleFiltroStockChange('STOCK_BAJO')}
+            >
+              Stock Bajo ({inventario.filter(item => item.stock > 0 && item.stock < item.stockseguridad).length})
+            </Button>
+            <Button
+              size="sm"
+              colorScheme={filtroStock === 'STOCK_MEDIO' ? 'yellow' : 'gray'}
+              onClick={() => handleFiltroStockChange('STOCK_MEDIO')}
+            >
+              Stock Medio ({inventario.filter(item => item.stock >= item.stockseguridad && item.stock <= item.puntopedido).length})
+            </Button>
+            <Button
+              size="sm"
+              colorScheme={filtroStock === 'STOCK_ALTO' ? 'green' : 'gray'}
+              onClick={() => handleFiltroStockChange('STOCK_ALTO')}
+            >
+              Stock Alto ({inventario.filter(item => item.stock > item.puntopedido).length})
+            </Button>
+          </HStack>
+        </Box>
+        
         <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={{ base: 5, lg: 8 }} mb={8}>
           <Stat>
             <StatLabel>Total Productos</StatLabel>
-            <StatNumber>{valorTotal.total_productos}</StatNumber>
+            <StatNumber>{getInventarioFiltrado().length}</StatNumber>
           </Stat>
           <Stat>
             <StatLabel>Stock Bajo</StatLabel>
             <StatNumber>
-              {inventario.filter(item => item.stock < item.stockseguridad).length}
+              {getInventarioFiltrado().filter(item => item.stock < item.stockseguridad).length}
             </StatNumber>
             <StatHelpText>
               <StatArrow type="decrease" />
@@ -229,7 +448,7 @@ export default function Inventario() {
           <Stat>
             <StatLabel>Stock Alto</StatLabel>
             <StatNumber>
-              {inventario.filter(item => item.stock > item.puntopedido).length}
+              {getInventarioFiltrado().filter(item => item.stock > item.puntopedido).length}
             </StatNumber>
             <StatHelpText>
               <StatArrow type="increase" />
@@ -248,6 +467,7 @@ export default function Inventario() {
               <Tr>
                 <Th>ID</Th>
                 <Th>Producto</Th>
+                <Th>Estado Producto</Th>
                 <Th>Stock</Th>
                 <Th>Estado</Th>
                 <Th>Punto de Pedido</Th>
@@ -256,38 +476,67 @@ export default function Inventario() {
               </Tr>
             </Thead>
             <Tbody>
-              {inventario.map((item) => {
-                const status = getStockStatus(item.stock, item.stockseguridad, item.puntopedido);
-                const producto = productos.find(p => p.idproducto === item.idproducto);
-                return (
-                  <Tr key={item.idinventario}>
-                    <Td>{item.idinventario}</Td>
-                    <Td>{producto?.nombreproducto || 'N/A'}</Td>
-                    <Td>{item.stock}</Td>
-                    <Td>
-                      <Badge colorScheme={status.color}>{status.text}</Badge>
-                    </Td>
-                    <Td>{item.puntopedido}</Td>
-                    <Td>{item.stockseguridad}</Td>
-                    <Td>
-                      <Button
-                        size="sm"
-                        leftIcon={<EditIcon />}
-                        onClick={() => handleEdit(item)}
-                      >
-                        Editar
-                      </Button>
-                      <Button
-                        size="sm"
-                        leftIcon={<EditIcon />}
-                        onClick={() => handleAnalizarProducto(item)}
-                      >
-                        Analizar
-                      </Button>
-                    </Td>
-                  </Tr>
-                );
-              })}
+              {getInventarioFiltrado().length === 0 ? (
+                <Tr>
+                  <Td colSpan={8} textAlign="center" py={8}>
+                    <Text color="gray.500">
+                      {filtroEstado === 'TODOS' && filtroStock === 'TODOS'
+                        ? 'No hay productos en el inventario' 
+                        : `No hay productos que coincidan con los filtros aplicados${
+                            filtroEstado !== 'TODOS' ? ` (Estado: ${filtroEstado})` : ''
+                          }${
+                            filtroStock !== 'TODOS' ? ` (Stock: ${
+                              filtroStock === 'SIN_STOCK' ? 'Sin stock' :
+                              filtroStock === 'STOCK_BAJO' ? 'Stock bajo' :
+                              filtroStock === 'STOCK_MEDIO' ? 'Stock medio' :
+                              filtroStock === 'STOCK_ALTO' ? 'Stock alto' : ''
+                            })` : ''
+                          }`
+                      }
+                    </Text>
+                  </Td>
+                </Tr>
+              ) : (
+                getInventarioFiltrado().map((item) => {
+                  const status = getStockStatus(item.stock, item.stockseguridad, item.puntopedido);
+                  const producto = productos.find(p => p.idproducto === item.idproducto);
+                  return (
+                    <Tr key={item.idinventario}>
+                      <Td>{item.idinventario}</Td>
+                      <Td>{producto?.nombreproducto || 'N/A'}</Td>
+                      <Td>
+                        <Badge 
+                          colorScheme={producto?.estadoproducto === 'ACTIVO' ? 'green' : 'red'}
+                        >
+                          {producto?.estadoproducto || 'N/A'}
+                        </Badge>
+                      </Td>
+                      <Td>{item.stock}</Td>
+                      <Td>
+                        <Badge colorScheme={status.color}>{status.text}</Badge>
+                      </Td>
+                      <Td>{item.puntopedido}</Td>
+                      <Td>{item.stockseguridad}</Td>
+                      <Td>
+                        <Button
+                          size="sm"
+                          leftIcon={<EditIcon />}
+                          onClick={() => handleEdit(item)}
+                        >
+                          Editar
+                        </Button>
+                        <Button
+                          size="sm"
+                          leftIcon={<EditIcon />}
+                          onClick={() => handleAnalizarProducto(item)}
+                        >
+                          Analizar
+                        </Button>
+                      </Td>
+                    </Tr>
+                  );
+                })
+              )}
             </Tbody>
           </Table>
         </Box>
