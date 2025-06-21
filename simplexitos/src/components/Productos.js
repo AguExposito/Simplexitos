@@ -45,7 +45,7 @@ export default function Productos() {
     costoalmacenamiento: '',
     estadoproducto: 'ACTIVO',
     demanda: '',
-    stockseguridad: '',
+    desviacionestandardemanda: '',
   });
 
   const [showProveedores, setShowProveedores] = useState(false);
@@ -105,7 +105,6 @@ export default function Productos() {
           ...formData,
           costoalmacenamiento: parseFloat(formData.costoalmacenamiento) || 0,
           demanda: parseFloat(formData.demanda) || 0,
-          stockseguridad: parseInt(formData.stockseguridad) || 0
         }),
       });
 
@@ -141,7 +140,7 @@ export default function Productos() {
       costoalmacenamiento: producto.costoalmacenamiento?.toFixed(2) || '0.00',
       estadoproducto: producto.estadoproducto,
       demanda: producto.demanda?.toFixed(2) || '0.00',
-      stockseguridad: producto.stockseguridad || 0
+      desviacionestandardemanda: producto.desviacionestandardemanda || '',
     });
     onOpen();
   };
@@ -225,7 +224,7 @@ export default function Productos() {
       costoalmacenamiento: '',
       estadoproducto: 'ACTIVO',
       demanda: '',
-      stockseguridad: '',
+      desviacionestandardemanda: '',
     });
     onOpen();
   };
@@ -265,7 +264,7 @@ export default function Productos() {
               <Th>Nombre</Th>
               <Th>Modelo</Th>
               <Th>Demanda Anual</Th>
-              <Th>Stock Seguridad</Th>
+              <Th>Desviación Estándar de Demanda</Th>
               <Th>Costo Almacenamiento</Th>
               <Th>Stock Actual</Th>
               <Th>Estado</Th>
@@ -279,7 +278,7 @@ export default function Productos() {
                 <Td>{producto.nombreproducto}</Td>
                 <Td>{producto.modeloproducto}</Td>
                 <Td>{producto.demanda?.toFixed(2) || '0.00'} unidades/año</Td>
-                <Td>{producto.stockseguridad}</Td>
+                <Td>{producto.desviacionestandardemanda}</Td>
                 <Td>{producto.costoalmacenamiento?.toFixed(2) || '0.00'}</Td>
                 <Td>{getStockBadge(producto.stockactual)}</Td>
                 <Td>{producto.estadoproducto}</Td>
@@ -388,10 +387,10 @@ export default function Productos() {
                 />
               </FormControl>
               <FormControl isRequired mb={4}>
-                <FormLabel>Stock de Seguridad</FormLabel>
+                <FormLabel>Desviación Estándar de Demanda</FormLabel>
                 <Input
-                  name="stockseguridad"
-                  value={formData.stockseguridad}
+                  name="desviacionestandardemanda"
+                  value={formData.desviacionestandardemanda}
                   onChange={handleInputChange}
                 />
               </FormControl>

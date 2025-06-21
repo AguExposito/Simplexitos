@@ -26,6 +26,19 @@ const producto = db.define('producto', {
     costoalmacenamiento: {
         type: DataTypes.DOUBLE
     },
+    demanda: {
+        type: DataTypes.DOUBLE
+    },
+    desviacionestandardemanda: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0
+    },
+    stockseguridad: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0
+    },
     estadoproducto: {
         type: DataTypes.ENUM('ACTIVO', 'INACTIVO'),
         defaultValue: 'ACTIVO'

@@ -19,15 +19,15 @@ import {
   NumberInputStepper,
   NumberIncrementStepper,
   NumberDecrementStepper,
+  Alert,
+  AlertIcon,
+  Text,
 } from '@chakra-ui/react';
 import { API_BASE_URL } from '../config';
 
 export default function InventarioForm({ isOpen, onClose, inventarioId, productId, onInventarioUpdated }) {
   const [formData, setFormData] = useState({
     stock: 0,
-    puntopedido: 0,
-    stockseguridad: 0,
-    loteoptimo: 10,
     modeloinventario: 'LOTE_FIJO'
   });
   const [loading, setLoading] = useState(false);
@@ -53,9 +53,6 @@ export default function InventarioForm({ isOpen, onClose, inventarioId, productI
       const data = await response.json();
       setFormData({
         stock: data.stock || 0,
-        puntopedido: data.puntopedido || 0,
-        stockseguridad: data.stockseguridad || 0,
-        loteoptimo: data.loteoptimo || 10,
         modeloinventario: data.modeloinventario || 'LOTE_FIJO'
       });
     } catch (error) {
@@ -95,9 +92,6 @@ export default function InventarioForm({ isOpen, onClose, inventarioId, productI
       // Ensure we're working with numbers, not strings
       const numericFormData = {
         stock: Number(formData.stock),
-        puntopedido: Number(formData.puntopedido),
-        stockseguridad: Number(formData.stockseguridad),
-        loteoptimo: Number(formData.loteoptimo),
         modeloinventario: formData.modeloinventario
       };
       
@@ -123,9 +117,9 @@ export default function InventarioForm({ isOpen, onClose, inventarioId, productI
 
       toast({
         title: 'Éxito',
-        description: 'Inventario actualizado correctamente',
+        description: 'Inventario actualizado correctamente. Los valores de lote óptimo, stock de seguridad y punto de pedido se calcularon automáticamente.',
         status: 'success',
-        duration: 3000,
+        duration: 5000,
         isClosable: true,
       });
       
@@ -156,6 +150,17 @@ export default function InventarioForm({ isOpen, onClose, inventarioId, productI
         <ModalCloseButton />
         <form onSubmit={handleSubmit}>
           <ModalBody>
+            <Alert status="info" mb={4}>
+              <AlertIcon />
+              <Box>
+                <Text fontWeight="bold">Cálculos Automáticos</Text>
+                <Text fontSize="sm">
+                  Los valores de lote óptimo, stock de seguridad y punto de pedido se calculan automáticamente 
+                  basándose en las fórmulas del modelo de inventario seleccionado.
+                </Text>
+              </Box>
+            </Alert>
+
             <FormControl mb={4}>
               <FormLabel>Modelo de Inventario</FormLabel>
               <Select
@@ -174,36 +179,6 @@ export default function InventarioForm({ isOpen, onClose, inventarioId, productI
                 min={0} 
                 value={formData.stock}
                 onChange={(value) => handleNumberChange('stock', value)}
-              >
-                <NumberInputField />
-                <NumberInputStepper>
-                  <NumberIncrementStepper />
-                  <NumberDecrementStepper />
-                </NumberInputStepper>
-              </NumberInput>
-            </FormControl>
-            
-            <FormControl mb={4}>
-              <FormLabel>Punto de Pedido</FormLabel>
-              <NumberInput 
-                min={0} 
-                value={formData.puntopedido}
-                onChange={(value) => handleNumberChange('puntopedido', value)}
-              >
-                <NumberInputField />
-                <NumberInputStepper>
-                  <NumberIncrementStepper />
-                  <NumberDecrementStepper />
-                </NumberInputStepper>
-              </NumberInput>
-            </FormControl>
-            
-            <FormControl mb={4}>
-              <FormLabel>Stock de Seguridad</FormLabel>
-              <NumberInput 
-                min={0} 
-                value={formData.stockseguridad}
-                onChange={(value) => handleNumberChange('stockseguridad', value)}
               >
                 <NumberInputField />
                 <NumberInputStepper>

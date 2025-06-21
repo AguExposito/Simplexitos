@@ -18,6 +18,7 @@ CREATE TABLE producto (
   descripcionproducto           VARCHAR(300),        
   costoalmacenamiento           DOUBLE PRECISION,
   demanda                       DOUBLE PRECISION,
+  desviacionestandardemanda     INT NOT NULL,
   stockseguridad                INT NOT NULL,
   estadoproducto                estado_comun DEFAULT 'ACTIVO',
   fechaaltaproducto             DATE DEFAULT CURRENT_DATE,

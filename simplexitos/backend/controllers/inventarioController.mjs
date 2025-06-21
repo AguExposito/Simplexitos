@@ -215,7 +215,13 @@ async function calcularloteoptimo(idproducto) {
             throw new Error('Faltan datos necesarios para el cálculo del lote óptimo');
         }
 
-        // Fórmula EOQ: Q* = sqrt((2 * D * S) / H)
+        // FÓRMULA EOQ (Economic Order Quantity) - Lote Óptimo:
+        // Q* = sqrt((2 * D * S) / H)
+        // Donde:
+        // Q* = Lote óptimo (cantidad a pedir)
+        // D = Demanda anual
+        // S = Costo de pedido (costo fijo por pedido)
+        // H = Costo de almacenamiento por unidad por año
         const loteoptimo = Math.sqrt((2 * demanda * costopedido) / costoalmacenamiento);
 
         return { loteoptimo, demanda };
@@ -262,11 +268,26 @@ async function calcularCostoTotal(idproducto, cantidadPedir) {
         const costoalmacenamientoNum = Number(costoalmacenamiento) || 0;
         const cantidadPedirNum = Number(cantidadPedir) || 1;
 
-        // Fórmula del costo total:
+        // FÓRMULAS DEL COSTO TOTAL DE INVENTARIO:
         // CT = (D * Cu) + (D/Q * S) + (Q/2 * H)
+        // Donde:
+        // CT = Costo total anual
+        // D = Demanda anual
+        // Cu = Costo unitario (precio por unidad)
+        // Q = Cantidad a pedir (lote óptimo)
+        // S = Costo de pedido (costo fijo por pedido)
+        // H = Costo de almacenamiento por unidad por año
+        
+        // 1. Costo de compra = Demanda anual * Precio unitario
         const costoCompra = demandaNum * preciounitarioNum;
+        
+        // 2. Costo de pedido = (Demanda anual / Cantidad a pedir) * Costo de pedido
         const costoPedido = (demandaNum / cantidadPedirNum) * costopedidoNum;
+        
+        // 3. Costo de almacenamiento = (Cantidad a pedir / 2) * Costo de almacenamiento
         const costoAlmacenamiento = (cantidadPedirNum / 2) * costoalmacenamientoNum;
+        
+        // 4. Costo total = Costo de compra + Costo de pedido + Costo de almacenamiento
         const costoTotal = costoCompra + costoPedido + costoAlmacenamiento;
 
         console.log('Cálculos de costos:', {
@@ -605,7 +626,7 @@ export const updateInventario = async (req, res) => {
 
         // Primero verificamos que el inventario existe y obtenemos el producto asociado
         const inventarioCheck = await client.query(`
-            SELECT i.*, p.idproducto, p.modeloproducto, p.demanda
+            SELECT i.*, p.idproducto, p.modeloproducto, p.demanda, p.desviacionestandardemanda
             FROM inventario i
             JOIN producto p ON i.idproducto = p.idproducto
             WHERE i.idinventario = $1
@@ -643,12 +664,10 @@ export const updateInventario = async (req, res) => {
         // Actualizar el resto de los campos del inventario
         const result = await client.query(`
             UPDATE inventario 
-            SET stock = COALESCE($1, stock),
-                puntopedido = COALESCE($2, puntopedido),
-                stockseguridad = COALESCE($3, stockseguridad)
-            WHERE idinventario = $4
+            SET stock = COALESCE($1, stock)
+            WHERE idinventario = $2
             RETURNING *
-        `, [stock, puntopedido, stockseguridad, id]);
+        `, [stock, id]);
 
         if (result.rows.length === 0) {
             await client.query('ROLLBACK');
@@ -657,7 +676,7 @@ export const updateInventario = async (req, res) => {
 
         // Verificar si hay datos necesarios para los cálculos
         const proveedorCheck = await client.query(`
-            SELECT pp.*, p.demanda, p.costoalmacenamiento
+           SELECT pp.*, p.demanda, p.costoalmacenamiento, p.desviacionestandardemanda
             FROM proveedor_producto pp
             JOIN producto p ON pp.idproducto = p.idproducto
             WHERE pp.idproducto = $1
@@ -673,6 +692,8 @@ export const updateInventario = async (req, res) => {
                 // Calcular costos basados en el modelo actual
                 const modeloFinal = modeloinventario || modeloActual;
                 let loteoptimo = 1;
+                let stockseguridadCalculado = 0;
+                let puntopedidoCalculado = 0;
                 let costos = {
                     costoCompra: 0,
                     costoPedido: 0,
@@ -680,23 +701,56 @@ export const updateInventario = async (req, res) => {
                     costoTotal: 0
                 };
 
-                const { demanda, costopedido, costoalmacenamiento, preciounitario } = proveedorCheck.rows[0];
+                const { demanda, costopedido, costoalmacenamiento, preciounitario, desviacionestandardemanda, tiempoenvio } = proveedorCheck.rows[0];
+
 
                 if (modeloFinal === 'LOTE_FIJO') {
-                    // Fórmula EOQ: Q* = sqrt((2 * D * S) / H)
+                    // 1. Lote óptimo (EOQ): Q* = sqrt((2 * D * S) / H)
+                    // Donde: D = demanda anual, S = costo de pedido, H = costo de almacenamiento                    
                     loteoptimo = Math.sqrt((2 * demanda * costopedido) / costoalmacenamiento);
                     
                     // Calcular costos
+                    // 2. Demanda diaria promedio = demanda anual / 365 días
+                    const demandaDiariaPromedio = demanda / 365;
+                    
+                    // 3. Stock de seguridad = 1.64 * sqrt(tiempo_envio) * desviacion_estandar
+                    // Donde 1.64 corresponde a un nivel de servicio del 95%
+                    stockseguridadCalculado = 1.64 * Math.sqrt(tiempoenvio) * desviacionestandardemanda;
+                    
+                    // 4. Punto de pedido = demanda diaria promedio * tiempo envío + stock seguridad
+                    puntopedidoCalculado = demandaDiariaPromedio * tiempoenvio + stockseguridadCalculado;
+                    
+                    // 5. Costo de compra = demanda anual * precio unitario
                     costos.costoCompra = demanda * preciounitario;
+                    
+                    // 6. Costo de pedido = (demanda anual / lote óptimo) * costo de pedido
                     costos.costoPedido = (demanda / loteoptimo) * costopedido;
+                    
+                    // 7. Costo de almacenamiento = (lote óptimo / 2) * costo de almacenamiento
                     costos.costoAlmacenamiento = (loteoptimo / 2) * costoalmacenamiento;
+                    
+                    // 8. Costo total (CGI) = costo compra + costo pedido + costo almacenamiento
                     costos.costoTotal = costos.costoCompra + costos.costoPedido + costos.costoAlmacenamiento;
+                    
                 } else if (modeloFinal === 'PERIODO_FIJO') {
-                    // Calcular el tiempo óptimo entre pedidos (T*)
+                    // FÓRMULAS PARA MODELO PERIODO_FIJO:
+                    
+                    // 1. Tiempo óptimo entre pedidos: T* = sqrt((2 * S) / (D * H))
                     const tiempoOptimo = Math.sqrt((2 * costopedido) / (demanda * costoalmacenamiento));
+                    
+                    // 2. Lote óptimo = demanda anual * tiempo óptimo
                     loteoptimo = demanda * tiempoOptimo;
                     
-                    // Calcular costos
+                    // 3. Demanda diaria promedio = demanda anual / 365 días
+                    const demandaDiariaPromedio = demanda / 365;
+                    
+                    // 4. Stock de seguridad = 1.64 * sqrt(tiempo_envio) * desviacion_estandar
+                    stockseguridadCalculado = 1.64 * Math.sqrt(tiempoenvio) * desviacionestandardemanda;
+                    
+                    // 5. Punto de pedido = demanda diaria promedio * tiempo envío + stock seguridad
+                    puntopedidoCalculado = demandaDiariaPromedio * tiempoenvio + stockseguridadCalculado;
+                    
+                    // 6. Costos (mismas fórmulas que LOTE_FIJO)
                     costos.costoCompra = demanda * preciounitario;
                     costos.costoPedido = (demanda / loteoptimo) * costopedido;
                     costos.costoAlmacenamiento = (loteoptimo / 2) * costoalmacenamiento;
@@ -707,19 +761,29 @@ export const updateInventario = async (req, res) => {
                 await client.query(`
                     UPDATE inventario 
                     SET loteoptimo = $1,
-                        costocompra = $2,
-                        costopedido = $3,
-                        costoalmacenamiento = $4,
-                        cgi = $5
-                    WHERE idinventario = $6
+                        stockseguridad = $2,
+                        puntopedido = $3,
+                        costocompra = $4,
+                        costopedido = $5,
+                        costoalmacenamiento = $6,
+                        cgi = $7
+                    WHERE idinventario = $8
                 `, [
                     Math.round(loteoptimo),
+                    Math.round(stockseguridadCalculado),
+                    Math.round(puntopedidoCalculado),
                     costos.costoCompra,
                     costos.costoPedido,
                     costos.costoAlmacenamiento,
                     costos.costoTotal,
                     id
                 ]);
+                console.log('Valores calculados automáticamente:', {
+                    loteoptimo: Math.round(loteoptimo),
+                    stockseguridad: Math.round(stockseguridadCalculado),
+                    puntopedido: Math.round(puntopedidoCalculado),
+                    costos
+                });
             } catch (error) {
                 console.error('Error al calcular costos:', error);
                 // No hacemos ROLLBACK aquí, solo registramos el error
@@ -960,3 +1024,149 @@ async function obtenerUltimasOrdenes(idproducto, limite = 5) {
         return [];
     }
 }
+
+// Función para recalcular automáticamente todos los valores del inventario
+export const recalcularInventario = async (req, res) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        // Obtener todos los productos con sus datos de proveedor
+        const productosResult = await client.query(`
+            SELECT 
+                p.idproducto,
+                p.demanda,
+                p.costoalmacenamiento,
+                p.desviacionestandardemanda,
+                p.modeloproducto,
+                pp.costopedido,
+                pp.preciounitario,
+                pp.tiempoenvio
+            FROM producto p
+            LEFT JOIN proveedor_producto pp ON p.idproducto = pp.idproducto
+            WHERE pp.idproducto IS NOT NULL
+            ORDER BY pp.preciounitario ASC
+        `);
+
+        let productosActualizados = 0;
+        let productosSinProveedor = 0;
+
+        for (const producto of productosResult.rows) {
+            const { 
+                idproducto, 
+                demanda, 
+                costopedido, 
+                costoalmacenamiento, 
+                preciounitario, 
+                desviacionestandardemanda, 
+                tiempoenvio,
+                modeloproducto 
+            } = producto;
+
+            if (demanda && costopedido && costoalmacenamiento && preciounitario && desviacionestandardemanda && tiempoenvio) {
+                let loteoptimo = 1;
+                let stockseguridadCalculado = 0;
+                let puntopedidoCalculado = 0;
+                let costos = {
+                    costoCompra: 0,
+                    costoPedido: 0,
+                    costoAlmacenamiento: 0,
+                    costoTotal: 0
+                };
+
+                if (modeloproducto === 'LOTE_FIJO') {
+                    // FÓRMULAS PARA MODELO LOTE_FIJO:
+                    
+                    // 1. Lote óptimo (EOQ): Q* = sqrt((2 * D * S) / H)
+                    loteoptimo = Math.sqrt((2 * demanda * costopedido) / costoalmacenamiento);
+                    
+                    // 2. Demanda diaria promedio = demanda anual / 365 días
+                    const demandaDiariaPromedio = demanda / 365;
+                    
+                    // 3. Stock de seguridad = 1.64 * sqrt(tiempo_envio) * desviacion_estandar
+                    stockseguridadCalculado = 1.64 * Math.sqrt(tiempoenvio) * desviacionestandardemanda;
+                    
+                    // 4. Punto de pedido = demanda diaria promedio * tiempo envío + stock seguridad
+                    puntopedidoCalculado = demandaDiariaPromedio * tiempoenvio + stockseguridadCalculado;
+                    
+                    // 5. Costos
+                    costos.costoCompra = demanda * preciounitario;
+                    costos.costoPedido = (demanda / loteoptimo) * costopedido;
+                    costos.costoAlmacenamiento = (loteoptimo / 2) * costoalmacenamiento;
+                    costos.costoTotal = costos.costoCompra + costos.costoPedido + costos.costoAlmacenamiento;
+                    
+                } else if (modeloproducto === 'PERIODO_FIJO') {
+                    // FÓRMULAS PARA MODELO PERIODO_FIJO:
+                    
+                    // 1. Tiempo óptimo entre pedidos: T* = sqrt((2 * S) / (D * H))
+                    const tiempoOptimo = Math.sqrt((2 * costopedido) / (demanda * costoalmacenamiento));
+                    
+                    // 2. Lote óptimo = demanda anual * tiempo óptimo
+                    loteoptimo = demanda * tiempoOptimo;
+                    
+                    // 3. Demanda diaria promedio = demanda anual / 365 días
+                    const demandaDiariaPromedio = demanda / 365;
+                    
+                    // 4. Stock de seguridad = 1.64 * sqrt(tiempo_envio) * desviacion_estandar
+                    stockseguridadCalculado = 1.64 * Math.sqrt(tiempoenvio) * desviacionestandardemanda;
+                    
+                    // 5. Punto de pedido = demanda diaria promedio * tiempo envío + stock seguridad
+                    puntopedidoCalculado = demandaDiariaPromedio * tiempoenvio + stockseguridadCalculado;
+                    
+                    // 6. Costos
+                    costos.costoCompra = demanda * preciounitario;
+                    costos.costoPedido = (demanda / loteoptimo) * costopedido;
+                    costos.costoAlmacenamiento = (loteoptimo / 2) * costoalmacenamiento;
+                    costos.costoTotal = costos.costoCompra + costos.costoPedido + costos.costoAlmacenamiento;
+                }
+
+                // Actualizar el inventario con los valores recalculados
+                await client.query(`
+                    UPDATE inventario 
+                    SET loteoptimo = $1,
+                        stockseguridad = $2,
+                        puntopedido = $3,
+                        costocompra = $4,
+                        costopedido = $5,
+                        costoalmacenamiento = $6,
+                        cgi = $7,
+                        modeloinventario = $8
+                    WHERE idproducto = $9
+                `, [
+                    Math.round(loteoptimo),
+                    Math.round(stockseguridadCalculado),
+                    Math.round(puntopedidoCalculado),
+                    costos.costoCompra,
+                    costos.costoPedido,
+                    costos.costoAlmacenamiento,
+                    costos.costoTotal,
+                    modeloproducto,
+                    idproducto
+                ]);
+
+                productosActualizados++;
+            } else {
+                productosSinProveedor++;
+            }
+        }
+
+        await client.query('COMMIT');
+
+        res.json({
+            message: 'Recálculo completado',
+            productosActualizados,
+            productosSinProveedor,
+            totalProductos: productosResult.rows.length
+        });
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error al recalcular inventario:', error);
+        res.status(500).json({ 
+            error: 'Error al recalcular inventario',
+            details: error.message
+        });
+    } finally {
+        client.release();
+    }
+};

@@ -79,6 +79,8 @@ export default function Inventario() {
     fetchInventario();
     fetchProductos();
     fetchValorTotal();
+    // Ejecutar recálculo automático al acceder a la sección
+    recalcularInventarioAutomatico();
   }, []);
 
   const fetchInventario = async () => {
@@ -132,6 +134,28 @@ export default function Inventario() {
         duration: 3000,
         isClosable: true,
       });
+    }
+  };
+
+  const recalcularInventarioAutomatico = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/inventario/recalcular`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Recálculo automático completado:', data);
+        
+        // Recargar los datos del inventario después del recálculo
+        fetchInventario();
+      }
+    } catch (error) {
+      console.error('Error en recálculo automático:', error);
+      // No mostrar error al usuario ya que es un proceso automático
     }
   };
 
@@ -302,6 +326,14 @@ export default function Inventario() {
       <Container maxW="container.xl">
         <Heading mb={6}>Inventario</Heading>
         
+        {/* Mensaje informativo sobre recálculo automático */}
+        <Box mb={4} p={3} bg="green.50" borderRadius="md">
+          <Text fontSize="sm" color="green.700">
+            <strong>Recálculo Automático:</strong> Los valores de lote óptimo, stock de seguridad y punto de pedido 
+            se calculan automáticamente al acceder a esta sección y cuando se crean/modifican productos.
+          </Text>
+        </Box>
+        
         {/* Indicador del filtro activo */}
         {(filtroEstado !== 'TODOS' || filtroStock !== 'TODOS') && (
           <Box mb={4} p={3} bg="blue.50" borderRadius="md">
@@ -384,6 +416,14 @@ export default function Inventario() {
                   Exportar CSV
                 </Button>
               )}
+              <Button
+                size="sm"
+                colorScheme="blue"
+                onClick={recalcularInventarioAutomatico}
+                title="Recalcular automáticamente todos los valores del inventario"
+              >
+                Recalcular
+              </Button>
             </HStack>
           </HStack>
         </Box>
@@ -470,8 +510,8 @@ export default function Inventario() {
                 <Th>Estado Producto</Th>
                 <Th>Stock</Th>
                 <Th>Estado</Th>
-                <Th>Punto de Pedido</Th>
-                <Th>Stock Seguridad</Th>
+                <Th>Punto de Pedido*</Th>
+                <Th>Stock Seguridad*</Th>
                 <Th>Acciones</Th>
               </Tr>
             </Thead>
@@ -498,12 +538,12 @@ export default function Inventario() {
                 </Tr>
               ) : (
                 getInventarioFiltrado().map((item) => {
-                  const status = getStockStatus(item.stock, item.stockseguridad, item.puntopedido);
-                  const producto = productos.find(p => p.idproducto === item.idproducto);
-                  return (
-                    <Tr key={item.idinventario}>
-                      <Td>{item.idinventario}</Td>
-                      <Td>{producto?.nombreproducto || 'N/A'}</Td>
+                const status = getStockStatus(item.stock, item.stockseguridad, item.puntopedido);
+                const producto = productos.find(p => p.idproducto === item.idproducto);
+                return (
+                  <Tr key={item.idinventario}>
+                    <Td>{item.idinventario}</Td>
+                    <Td>{producto?.nombreproducto || 'N/A'}</Td>
                       <Td>
                         <Badge 
                           colorScheme={producto?.estadoproducto === 'ACTIVO' ? 'green' : 'red'}
@@ -511,34 +551,37 @@ export default function Inventario() {
                           {producto?.estadoproducto || 'N/A'}
                         </Badge>
                       </Td>
-                      <Td>{item.stock}</Td>
-                      <Td>
-                        <Badge colorScheme={status.color}>{status.text}</Badge>
-                      </Td>
-                      <Td>{item.puntopedido}</Td>
-                      <Td>{item.stockseguridad}</Td>
-                      <Td>
-                        <Button
-                          size="sm"
-                          leftIcon={<EditIcon />}
-                          onClick={() => handleEdit(item)}
-                        >
-                          Editar
-                        </Button>
-                        <Button
-                          size="sm"
-                          leftIcon={<EditIcon />}
-                          onClick={() => handleAnalizarProducto(item)}
-                        >
-                          Analizar
-                        </Button>
-                      </Td>
-                    </Tr>
-                  );
+                    <Td>{item.stock}</Td>
+                    <Td>
+                      <Badge colorScheme={status.color}>{status.text}</Badge>
+                    </Td>
+                    <Td>{item.puntopedido}</Td>
+                    <Td>{item.stockseguridad}</Td>
+                    <Td>
+                      <Button
+                        size="sm"
+                        leftIcon={<EditIcon />}
+                        onClick={() => handleEdit(item)}
+                      >
+                        Editar
+                      </Button>
+                      <Button
+                        size="sm"
+                        leftIcon={<EditIcon />}
+                        onClick={() => handleAnalizarProducto(item)}
+                      >
+                        Analizar
+                      </Button>
+                    </Td>
+                  </Tr>
+                );
                 })
               )}
             </Tbody>
           </Table>
+          <Text fontSize="xs" color="gray.500" mt={2}>
+            * Valores calculados automáticamente según las fórmulas del modelo de inventario
+          </Text>
         </Box>
 
         <InventarioForm 

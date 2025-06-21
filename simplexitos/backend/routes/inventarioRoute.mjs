@@ -7,7 +7,8 @@ import {
   deleteInventario,
   getInventarioByProducto,
   updateInventarioByProducto,
-  getValorTotalInventario
+  getValorTotalInventario,
+  recalcularInventario
 } from '../controllers/inventarioController.mjs';
 
 const inventarioRoute = express.Router();
@@ -21,5 +22,8 @@ inventarioRoute.post('/inventario', createInventario);
 inventarioRoute.put('/inventario/:id', updateInventario);
 inventarioRoute.put('/inventario/producto/:idproducto', updateInventarioByProducto);
 inventarioRoute.delete('/inventario/:id', deleteInventario);
+
+// Ruta para recalcular automáticamente todos los valores del inventario
+inventarioRoute.post('/inventario/recalcular', recalcularInventario);
 
 export default inventarioRoute;
