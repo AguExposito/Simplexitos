@@ -43,9 +43,7 @@ export default function ProveedoresProducto({ productoId, nombreProducto }) {
     costopedido: 0,
     costocompra: 0,
     preciounitario: 0,
-    tiempoenvio: 0,
-    costoalmacenamiento: 0,
-    frecuenciadereabastecimiento: 0
+    tiempoenvio: 0
   });
 
   useEffect(() => {
@@ -197,9 +195,7 @@ export default function ProveedoresProducto({ productoId, nombreProducto }) {
       costopedido: proveedor.costopedido || 0,
       costocompra: proveedor.costocompra || 0,
       preciounitario: proveedor.preciounitario || 0,
-      tiempoenvio: proveedor.tiempoenvio || 0,
-      costoalmacenamiento: proveedor.costoalmacenamiento || 0,
-      frecuenciadereabastecimiento: proveedor.frecuenciadereabastecimiento || 0
+      tiempoenvio: proveedor.tiempoenvio || 0
     });
     onOpen();
   };
@@ -216,9 +212,7 @@ export default function ProveedoresProducto({ productoId, nombreProducto }) {
       costopedido: 0,
       costocompra: 0,
       preciounitario: 0,
-      tiempoenvio: 0,
-      costoalmacenamiento: 0,
-      frecuenciadereabastecimiento: 0
+      tiempoenvio: 0
     });
   };
 
@@ -340,36 +334,6 @@ export default function ProveedoresProducto({ productoId, nombreProducto }) {
                   min={1}
                   value={formData.tiempoenvio}
                   onChange={(value) => handleNumberChange('tiempoenvio', value)}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-              </FormControl>
-              
-              <FormControl mb={4}>
-                <FormLabel>Costo de Almacenamiento</FormLabel>
-                <NumberInput 
-                  min={0}
-                  value={formData.costoalmacenamiento}
-                  onChange={(value) => handleNumberChange('costoalmacenamiento', value)}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-              </FormControl>
-              
-              <FormControl mb={4}>
-                <FormLabel>Frecuencia de Reabastecimiento (días)</FormLabel>
-                <NumberInput 
-                  min={0}
-                  value={formData.frecuenciadereabastecimiento}
-                  onChange={(value) => handleNumberChange('frecuenciadereabastecimiento', value)}
                 >
                   <NumberInputField />
                   <NumberInputStepper>

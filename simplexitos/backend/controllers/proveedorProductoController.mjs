@@ -27,9 +27,7 @@ export const createProveedorProducto = async (req, res) => {
       costopedido, 
       costocompra, 
       preciounitario, 
-      tiempoenvio, 
-      costoalmacenamiento, 
-      frecuenciadereabastecimiento 
+      tiempoenvio
     } = req.body;
     
     // Verificar si ya existe la relación
@@ -44,10 +42,10 @@ export const createProveedorProducto = async (req, res) => {
     
     const result = await pool.query(`
       INSERT INTO proveedor_producto 
-      (idproducto, idproveedor, costopedido, costocompra, preciounitario, tiempoenvio, costoalmacenamiento, frecuenciadereabastecimiento) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+      (idproducto, idproveedor, costopedido, costocompra, preciounitario, tiempoenvio) 
+      VALUES ($1, $2, $3, $4, $5, $6) 
       RETURNING *
-    `, [idproducto, idproveedor, costopedido, costocompra, preciounitario, tiempoenvio, costoalmacenamiento, frecuenciadereabastecimiento]);
+    `, [idproducto, idproveedor, costopedido, costocompra, preciounitario, tiempoenvio]);
     
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -64,9 +62,7 @@ export const updateProveedorProducto = async (req, res) => {
       costopedido, 
       costocompra, 
       preciounitario, 
-      tiempoenvio, 
-      costoalmacenamiento, 
-      frecuenciadereabastecimiento 
+      tiempoenvio
     } = req.body;
     
     const result = await pool.query(`
@@ -74,12 +70,10 @@ export const updateProveedorProducto = async (req, res) => {
       SET costopedido = COALESCE($1, costopedido),
           costocompra = COALESCE($2, costocompra),
           preciounitario = COALESCE($3, preciounitario),
-          tiempoenvio = COALESCE($4, tiempoenvio),
-          costoalmacenamiento = COALESCE($5, costoalmacenamiento),
-          frecuenciadereabastecimiento = COALESCE($6, frecuenciadereabastecimiento)
-      WHERE idproveedorproducto = $7
+          tiempoenvio = COALESCE($4, tiempoenvio)
+      WHERE idproveedorproducto = $5
       RETURNING *
-    `, [costopedido, costocompra, preciounitario, tiempoenvio, costoalmacenamiento, frecuenciadereabastecimiento, id]);
+    `, [costopedido, costocompra, preciounitario, tiempoenvio, id]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Relación no encontrada' });

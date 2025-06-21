@@ -10,16 +10,18 @@ async function seedData() {
       {
         codproducto: 1001,
         nombreproducto: 'Laptop HP',
-        modeloproducto: 'Pavilion',
+        modeloproducto: 'LOTE_FIJO',
         descripcionproducto: 'Laptop HP Pavilion 15"',
+        costoalmacenamiento: 5.50,
         demanda: 10,
         stockseguridad: 5
       },
       {
         codproducto: 1002,
         nombreproducto: 'Monitor Dell',
-        modeloproducto: 'P2419H',
+        modeloproducto: 'LOTE_FIJO',
         descripcionproducto: 'Monitor Dell 24" Full HD',
+        costoalmacenamiento: 3.25,
         demanda: 8,
         stockseguridad: 3
       }
@@ -28,13 +30,14 @@ async function seedData() {
     for (const producto of productos) {
       await client.query(
         `INSERT INTO producto 
-         (codproducto, nombreproducto, modeloproducto, descripcionproducto, demanda, stockseguridad)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
+         (codproducto, nombreproducto, modeloproducto, descripcionproducto, costoalmacenamiento, demanda, stockseguridad)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [
           producto.codproducto,
           producto.nombreproducto,
           producto.modeloproducto,
           producto.descripcionproducto,
+          producto.costoalmacenamiento,
           producto.demanda,
           producto.stockseguridad
         ]
@@ -72,8 +75,8 @@ async function seedData() {
       await client.query(
         `INSERT INTO inventario 
          (idproducto, stock, demanda, costoalmacenamiento, costocompra, costopedido, 
-          puntopedido, stockseguridad, loteoptimo, modeloinventario, cgi, frecuenciadereabastecimiento)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+          puntopedido, stockseguridad, loteoptimo, modeloinventario, cgi)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
         [
           producto.idproducto,
           20, // stock
@@ -84,9 +87,8 @@ async function seedData() {
           15, // puntopedido
           5, // stockseguridad
           30, // loteoptimo
-          'EOQ', // modeloinventario
-          0.2, // cgi
-          30 // frecuenciadereabastecimiento
+          'LOTE_FIJO', // modeloinventario
+          0.2 // cgi
         ]
       );
     }

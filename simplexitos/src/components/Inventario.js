@@ -62,8 +62,7 @@ export default function Inventario() {
     stockseguridad: 0,
     loteoptimo: 0,
     modeloinventario: 'LOTE_FIJO',
-    cgi: 0,
-    frecuenciadereabastecimiento: 0
+    cgi: 0
   });
   const [analisisProducto, setAnalisisProducto] = useState(null);
 

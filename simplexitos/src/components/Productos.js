@@ -42,6 +42,7 @@ export default function Productos() {
     nombreproducto: '',
     modeloproducto: 'LOTE_FIJO',
     descripcionproducto: '',
+    costoalmacenamiento: '',
     estadoproducto: 'ACTIVO',
     demanda: '',
     stockseguridad: '',
@@ -102,6 +103,7 @@ export default function Productos() {
         },
         body: JSON.stringify({
           ...formData,
+          costoalmacenamiento: parseFloat(formData.costoalmacenamiento) || 0,
           demanda: parseFloat(formData.demanda) || 0,
           stockseguridad: parseInt(formData.stockseguridad) || 0
         }),
@@ -136,6 +138,7 @@ export default function Productos() {
       nombreproducto: producto.nombreproducto,
       modeloproducto: producto.modeloproducto || 'LOTE_FIJO',
       descripcionproducto: producto.descripcionproducto || '',
+      costoalmacenamiento: producto.costoalmacenamiento?.toFixed(2) || '0.00',
       estadoproducto: producto.estadoproducto,
       demanda: producto.demanda?.toFixed(2) || '0.00',
       stockseguridad: producto.stockseguridad || 0
@@ -219,6 +222,7 @@ export default function Productos() {
       nombreproducto: '',
       modeloproducto: 'LOTE_FIJO',
       descripcionproducto: '',
+      costoalmacenamiento: '',
       estadoproducto: 'ACTIVO',
       demanda: '',
       stockseguridad: '',
@@ -262,6 +266,7 @@ export default function Productos() {
               <Th>Modelo</Th>
               <Th>Demanda Anual</Th>
               <Th>Stock Seguridad</Th>
+              <Th>Costo Almacenamiento</Th>
               <Th>Stock Actual</Th>
               <Th>Estado</Th>
               <Th>Acciones</Th>
@@ -275,6 +280,7 @@ export default function Productos() {
                 <Td>{producto.modeloproducto}</Td>
                 <Td>{producto.demanda?.toFixed(2) || '0.00'} unidades/año</Td>
                 <Td>{producto.stockseguridad}</Td>
+                <Td>{producto.costoalmacenamiento?.toFixed(2) || '0.00'}</Td>
                 <Td>{getStockBadge(producto.stockactual)}</Td>
                 <Td>{producto.estadoproducto}</Td>
                 <Td>
@@ -351,6 +357,14 @@ export default function Productos() {
                 <Input
                   name="descripcionproducto"
                   value={formData.descripcionproducto}
+                  onChange={handleInputChange}
+                />
+              </FormControl>
+              <FormControl isRequired>
+                <FormLabel>Costo de Almacenamiento</FormLabel>
+                <Input
+                  name="costoalmacenamiento"
+                  value={formData.costoalmacenamiento}
                   onChange={handleInputChange}
                 />
               </FormControl>

@@ -40,12 +40,6 @@ const proveedorproducto = db.define('proveedor_producto', {
     tiempoenvio: {
         type: DataTypes.INTEGER,
         allowNull: false
-    },
-    costoalmacenamiento: {
-        type: DataTypes.DOUBLE
-    },
-    frecuenciadereabastecimiento: {
-        type: DataTypes.INTEGER
     }
 }, {
     timestamps: false,

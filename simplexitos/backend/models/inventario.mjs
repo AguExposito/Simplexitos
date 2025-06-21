@@ -49,9 +49,6 @@ const inventario = db.define('inventario', {
     },
     cgi: {
         type: DataTypes.DOUBLE
-    },
-    frecuenciadereabastecimiento: {
-        type: DataTypes.INTEGER
     }
 }, {
     timestamps: false,

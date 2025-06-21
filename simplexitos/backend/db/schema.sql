@@ -15,7 +15,8 @@ CREATE TABLE producto (
   codproducto                   INTEGER UNIQUE NOT NULL,
   nombreproducto                VARCHAR(100) NOT NULL,
   modeloproducto                tipo_modelo DEFAULT 'LOTE_FIJO',
-  descripcionproducto           VARCHAR(300),
+  descripcionproducto           VARCHAR(300),        
+  costoalmacenamiento           DOUBLE PRECISION,
   demanda                       DOUBLE PRECISION,
   stockseguridad                INT NOT NULL,
   estadoproducto                estado_comun DEFAULT 'ACTIVO',
@@ -31,9 +32,8 @@ CREATE TABLE proveedor_producto (
   costopedido                   DOUBLE PRECISION NOT NULL,
   costocompra                   DOUBLE PRECISION NOT NULL,
   preciounitario                DOUBLE PRECISION NOT NULL,
-  tiempoenvio                   INT NOT NULL,          
-  costoalmacenamiento           DOUBLE PRECISION,
-  frecuenciadereabastecimiento  INT,
+  tiempoenvio                   INT NOT NULL,  
+  --frecuenciadereabastecimiento  INT,
   UNIQUE (idproducto, idproveedor)
 );
 

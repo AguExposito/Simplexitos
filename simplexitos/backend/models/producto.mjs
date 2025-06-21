@@ -23,6 +23,9 @@ const producto = db.define('producto', {
     descripcionproducto: {
         type: DataTypes.STRING(300)
     },
+    costoalmacenamiento: {
+        type: DataTypes.DOUBLE
+    },
     estadoproducto: {
         type: DataTypes.ENUM('ACTIVO', 'INACTIVO'),
         defaultValue: 'ACTIVO'

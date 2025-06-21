@@ -40,6 +40,7 @@ export const createProducto = async (req, res) => {
       nombreproducto, 
       modeloproducto, 
       descripcionproducto, 
+      costoalmacenamiento,
       demanda,
       stockseguridad,
       estadoproducto 
@@ -48,10 +49,10 @@ export const createProducto = async (req, res) => {
     // Primero creamos el producto
     const result = await pool.query(`
       INSERT INTO producto 
-      (codproducto, nombreproducto, modeloproducto, descripcionproducto, demanda, stockseguridad, estadoproducto) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7) 
+      (codproducto, nombreproducto, modeloproducto, descripcionproducto, costoalmacenamiento, demanda, stockseguridad, estadoproducto) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
       RETURNING *
-    `, [codproducto, nombreproducto, modeloproducto, descripcionproducto, demanda, stockseguridad, estadoproducto]);
+    `, [codproducto, nombreproducto, modeloproducto, descripcionproducto, costoalmacenamiento, demanda, stockseguridad, estadoproducto]);
 
     // Luego creamos el inventario con el mismo stock de seguridad
     await pool.query(`
@@ -75,6 +76,7 @@ export const updateProducto = async (req, res) => {
       nombreproducto, 
       modeloproducto, 
       descripcionproducto, 
+      costoalmacenamiento,
       demanda,
       stockseguridad,
       estadoproducto 
@@ -99,13 +101,14 @@ export const updateProducto = async (req, res) => {
             nombreproducto = $2,
             modeloproducto = $3,
             descripcionproducto = $4,
-            demanda = $5,
-            stockseguridad = $6,
-            estadoproducto = $7,
+            costoalmacenamiento = $5,
+            demanda = $6,
+            stockseguridad = $7,
+            estadoproducto = $8,
             fechamodificacionproducto = CURRENT_DATE
-        WHERE idproducto = $8
+        WHERE idproducto = $9
         RETURNING *
-      `, [codproducto, nombreproducto, modeloproducto, descripcionproducto, demanda, stockseguridad, estadoproducto, id]);
+      `, [codproducto, nombreproducto, modeloproducto, descripcionproducto, costoalmacenamiento, demanda, stockseguridad, estadoproducto, id]);
 
       if (result.rows.length === 0) {
         await client.query('ROLLBACK');

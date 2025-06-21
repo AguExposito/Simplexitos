@@ -367,14 +367,12 @@ async function calcularcostocompra(idproducto, idproveedor, loteoptimo) {
 
 async function calcularcostoalmacenamiento(idproducto, idproveedor, loteoptimo){
     try {
-        const proveedorproducto = await proveedorProductoModel.findOne({
-            where: {idproducto: idproducto, idproveedor: idproveedor}
-        });
-        if (!proveedorproducto) {
-            throw new Error('No se encontró proveedor para el artículo especificado');
+        const producto = await productoModel.findByPk(idproducto);
+        if (!producto) {
+            throw new Error('No se encontró el producto especificado');
         }
 
-        const costalm1 = proveedorproducto.costoalmacenamiento;
+        const costalm1 = producto.costoalmacenamiento || 0;
         const costoalmacenamiento = costalm1 * (loteoptimo/2)
         
         return costoalmacenamiento;
@@ -651,7 +649,7 @@ export const updateInventario = async (req, res) => {
 
         // Verificar si hay datos necesarios para los cálculos
         const proveedorCheck = await client.query(`
-            SELECT pp.*, p.demanda
+            SELECT pp.*, p.demanda, p.costoalmacenamiento
             FROM proveedor_producto pp
             JOIN producto p ON pp.idproducto = p.idproducto
             WHERE pp.idproducto = $1
@@ -704,16 +702,14 @@ export const updateInventario = async (req, res) => {
                         costocompra = $2,
                         costopedido = $3,
                         costoalmacenamiento = $4,
-                        cgi = $5,
-                        frecuenciadereabastecimiento = $6
-                    WHERE idinventario = $7
+                        cgi = $5
+                    WHERE idinventario = $6
                 `, [
                     Math.round(loteoptimo),
                     costos.costoCompra,
                     costos.costoPedido,
                     costos.costoAlmacenamiento,
                     costos.costoTotal,
-                    modeloFinal === 'PERIODO_FIJO' ? Math.round(1 / Math.sqrt((2 * costopedido) / (demanda * costoalmacenamiento))) : null,
                     id
                 ]);
             } catch (error) {

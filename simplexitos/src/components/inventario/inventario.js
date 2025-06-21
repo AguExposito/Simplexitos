@@ -22,8 +22,7 @@ const Inventario = () => {
         costocompra: '',
         costopedido: '',
         stockseguridad: '',
-        modeloinventario: '',
-        frecuenciadereabastecimiento: ''
+        modeloinventario: ''
     });
     const [calcMessage, setCalcMessage] = useState('');
     const [calcError, setCalcError] = useState('');
@@ -77,8 +76,7 @@ const Inventario = () => {
             costocompra: '',
             costopedido: '',
             stockseguridad: '',
-            modeloinventario: '',
-            frecuenciadereabastecimiento: ''
+            modeloinventario: ''
         });
         setCalcMessage('');
         setCalcError('');
@@ -113,7 +111,6 @@ const Inventario = () => {
                                 <p><strong>Stock:</strong> {inventoryData.stock}</p>
                                 <p><strong>Demanda:</strong> {inventoryData.demanda}</p>
                                 <p><strong>Modelo de Inventario:</strong> {inventoryData.modeloinventario}</p>
-                                <p><strong>Frecuencia de Reabastecimiento:</strong> {inventoryData.frecuenciadereabastecimiento}</p>
                                 <p><strong>Costo de Pedido:</strong> {inventoryData.costopedido}</p>
                                 <p><strong>Costo de Depósito:</strong> {inventoryData.costoalmacenamiento}</p>
                                 <p><strong>Costo de Venta:</strong> {inventoryData.costocompra}</p>
@@ -138,7 +135,6 @@ const Inventario = () => {
                                 { name: "costopedido", label: "Costo de Pedido" },
                                 { name: "stockseguridad", label: "Stock de Seguridad" },
                                 { name: "modeloinventario", label: "Modelo de Inventario" },
-                                { name: "frecuenciadereabastecimiento", label: "Frecuencia de Reabastecimiento" },
                             ].map(({ name, label }) => (
                                 <input
                                     key={name}
