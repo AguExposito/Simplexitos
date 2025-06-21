@@ -61,6 +61,14 @@ export const getInventarioById = async (req, res) => {
 
         const item = result.rows[0];
         
+        // Calcular la frecuencia de pedidos histórica
+        const frecuenciaHistorica = await calcularFrecuenciaPedidosHistorica(item.idproducto);
+        item.frecuenciaHistorica = frecuenciaHistorica;
+        
+        // Obtener las últimas órdenes de compra
+        const ultimasOrdenes = await obtenerUltimasOrdenes(item.idproducto, 5);
+        item.ultimasOrdenes = ultimasOrdenes;
+        
         // Calcular los costos si tenemos todos los datos necesarios
         if (item.demanda && item.preciounitario && item.costopedido && item.costoalmacenamiento) {
             try {
@@ -863,3 +871,92 @@ export const getValorTotalInventario = async (req, res) => {
         client.release();
     }
 };
+
+// Función para calcular la frecuencia de pedidos histórica
+async function calcularFrecuenciaPedidosHistorica(idproducto) {
+    try {
+        const result = await pool.query(`
+            SELECT 
+                COUNT(*) as total_ordenes,
+                MIN(fechaorden) as primera_orden,
+                MAX(fechaorden) as ultima_orden,
+                AVG(cantidadsolicitada) as cantidad_promedio
+            FROM orden_compra oc
+            JOIN inventario i ON oc.idinventario = i.idinventario
+            WHERE i.idproducto = $1 
+            AND oc.estadoorden IN ('RECIBIDA', 'ABIERTA')
+        `, [idproducto]);
+
+        if (result.rows.length === 0 || result.rows[0].total_ordenes === 0) {
+            return {
+                frecuencia: 0,
+                totalOrdenes: 0,
+                periodoPromedio: 0,
+                cantidadPromedio: 0
+            };
+        }
+
+        const { total_ordenes, primera_orden, ultima_orden, cantidad_promedio } = result.rows[0];
+        
+        // Si solo hay una orden, usar un período de 30 días como referencia
+        if (total_ordenes == 1) {
+            return {
+                frecuencia: 12, // 12 pedidos por año (cada mes)
+                totalOrdenes: parseInt(total_ordenes),
+                periodoPromedio: 30,
+                cantidadPromedio: Math.round(cantidad_promedio || 0)
+            };
+        }
+        
+        // Calcular el período total en días
+        const fechaInicio = new Date(primera_orden);
+        const fechaFin = new Date(ultima_orden);
+        const diasTotales = Math.max(1, (fechaFin - fechaInicio) / (1000 * 60 * 60 * 24));
+        
+        // Calcular frecuencia (pedidos por año)
+        const frecuencia = (total_ordenes / diasTotales) * 365;
+        
+        // Calcular período promedio entre pedidos (días)
+        const periodoPromedio = diasTotales / total_ordenes;
+
+        return {
+            frecuencia: Math.round(frecuencia * 100) / 100, // Redondear a 2 decimales
+            totalOrdenes: parseInt(total_ordenes),
+            periodoPromedio: Math.round(periodoPromedio * 100) / 100,
+            cantidadPromedio: Math.round(cantidad_promedio || 0)
+        };
+    } catch (error) {
+        console.error('Error al calcular frecuencia de pedidos histórica:', error);
+        return {
+            frecuencia: 0,
+            totalOrdenes: 0,
+            periodoPromedio: 0,
+            cantidadPromedio: 0
+        };
+    }
+}
+
+// Función para obtener las últimas órdenes de compra del producto
+async function obtenerUltimasOrdenes(idproducto, limite = 5) {
+    try {
+        const result = await pool.query(`
+            SELECT 
+                oc.idorden_compra,
+                oc.fechaorden,
+                oc.cantidadsolicitada,
+                oc.estadoorden,
+                p.nombreprove
+            FROM orden_compra oc
+            JOIN inventario i ON oc.idinventario = i.idinventario
+            JOIN proveedor p ON oc.idproveedor = p.idproveedor
+            WHERE i.idproducto = $1
+            ORDER BY oc.fechaorden DESC
+            LIMIT $2
+        `, [idproducto, limite]);
+
+        return result.rows;
+    } catch (error) {
+        console.error('Error al obtener últimas órdenes:', error);
+        return [];
+    }
+}

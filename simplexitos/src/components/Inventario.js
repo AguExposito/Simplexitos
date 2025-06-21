@@ -578,10 +578,75 @@ export default function Inventario() {
 
                       {analisisProducto.modeloinventario === 'PERIODO_FIJO' && (
                         <Box p={4} borderRadius="lg" bg={bgGreen}>
-                          <Text fontWeight="bold" mb={2}>Frecuencia de Pedidos</Text>
+                          <Text fontWeight="bold" mb={2}>Frecuencia de Pedidos (Período Fijo)</Text>
+                          <VStack align="stretch" spacing={2}>
+                            <Text>
+                              <strong>Frecuencia Histórica:</strong> {analisisProducto.frecuenciaHistorica?.frecuencia || 0} pedidos/año
+                            </Text>
+                            <Text>
+                              <strong>Total Órdenes:</strong> {analisisProducto.frecuenciaHistorica?.totalOrdenes || 0}
+                            </Text>
+                            <Text>
+                              <strong>Período Promedio:</strong> {analisisProducto.frecuenciaHistorica?.periodoPromedio || 0} días
+                            </Text>
+                            {analisisProducto.frecuenciaHistorica?.totalOrdenes === 0 && (
+                              <Text fontSize="sm" color="gray.500">
+                                No hay órdenes de compra históricas para este producto
+                              </Text>
+                            )}
+                          </VStack>
+                        </Box>
+                      )}
+
+                      {/* Mostrar frecuencia histórica para todos los modelos */}
+                      <Box p={4} borderRadius="lg" bg={bgPurple}>
+                        <Text fontWeight="bold" mb={2}>Historial de Pedidos</Text>
+                        <VStack align="stretch" spacing={2}>
                           <Text>
-                            {(1 / analisisProducto.tiempoOptimo)?.toFixed(2) || '0.00'} pedidos por año
+                            <strong>Total Órdenes:</strong> {analisisProducto.frecuenciaHistorica?.totalOrdenes || 0}
                           </Text>
+                          <Text>
+                            <strong>Frecuencia Promedio:</strong> {analisisProducto.frecuenciaHistorica?.frecuencia || 0} pedidos/año
+                          </Text>
+                          <Text>
+                            <strong>Período Promedio:</strong> {analisisProducto.frecuenciaHistorica?.periodoPromedio || 0} días
+                          </Text>
+                          <Text>
+                            <strong>Cantidad Promedio:</strong> {analisisProducto.frecuenciaHistorica?.cantidadPromedio || 0} unidades
+                          </Text>
+                          {analisisProducto.frecuenciaHistorica?.totalOrdenes === 0 && (
+                            <Text fontSize="sm" color="gray.500">
+                              No hay órdenes de compra históricas para este producto
+                            </Text>
+                          )}
+                        </VStack>
+                      </Box>
+
+                      {/* Mostrar últimas órdenes de compra */}
+                      {analisisProducto.ultimasOrdenes && analisisProducto.ultimasOrdenes.length > 0 && (
+                        <Box p={4} borderRadius="lg" bg={bgBlue}>
+                          <Text fontWeight="bold" mb={2}>Últimas Órdenes de Compra</Text>
+                          <VStack align="stretch" spacing={2}>
+                            {analisisProducto.ultimasOrdenes.map((orden, index) => (
+                              <Box key={index} p={2} bg="white" borderRadius="md">
+                                <Text fontSize="sm">
+                                  <strong>Orden #{orden.idorden_compra}</strong> - {new Date(orden.fechaorden).toLocaleDateString()}
+                                </Text>
+                                <Text fontSize="sm">
+                                  Cantidad: {orden.cantidadsolicitada} | Proveedor: {orden.nombreprove}
+                                </Text>
+                                <Badge 
+                                  colorScheme={
+                                    orden.estadoorden === 'RECIBIDA' ? 'green' : 
+                                    orden.estadoorden === 'ABIERTA' ? 'yellow' : 'red'
+                                  }
+                                  size="sm"
+                                >
+                                  {orden.estadoorden}
+                                </Badge>
+                              </Box>
+                            ))}
+                          </VStack>
                         </Box>
                       )}
                     </VStack>
