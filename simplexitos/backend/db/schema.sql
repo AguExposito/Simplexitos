@@ -35,6 +35,7 @@ CREATE TABLE proveedor_producto (
   preciounitario                DOUBLE PRECISION NOT NULL,
   tiempoenvio                   INT NOT NULL,  
   frecuenciadereabastecimiento  INT,
+  proveedor_predeterminado      BOOLEAN DEFAULT FALSE,
   UNIQUE (idproducto, idproveedor)
 );
 

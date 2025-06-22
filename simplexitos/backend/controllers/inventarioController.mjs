@@ -34,7 +34,28 @@ export const getInventario = async (req, res) => {
                 pp.costopedido
             FROM inventario i
             LEFT JOIN producto p ON i.idproducto = p.idproducto
-            LEFT JOIN proveedor_producto pp ON i.idproducto = pp.idproducto
+            LEFT JOIN (
+                SELECT DISTINCT ON (idproducto) 
+                    idproducto, 
+                    preciounitario, 
+                    costopedido,
+                    proveedor_predeterminado
+                FROM proveedor_producto 
+                WHERE proveedor_predeterminado = TRUE
+                UNION ALL
+                SELECT DISTINCT ON (idproducto) 
+                    idproducto, 
+                    preciounitario, 
+                    costopedido,
+                    proveedor_predeterminado
+                FROM proveedor_producto pp1
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM proveedor_producto pp2 
+                    WHERE pp2.idproducto = pp1.idproducto 
+                    AND pp2.proveedor_predeterminado = TRUE
+                )
+                ORDER BY idproducto, preciounitario ASC
+            ) pp ON i.idproducto = pp.idproducto
             ORDER BY i.idinventario
         `);
         
@@ -702,20 +723,33 @@ export const updateInventario = async (req, res) => {
             return res.status(404).json({ error: 'No se pudo actualizar el inventario' });
         }
 
-        // Verificar si hay datos necesarios para los cálculos
+        // Verificar si hay datos del proveedor para recalcular automáticamente
         const proveedorCheck = await client.query(`
-           SELECT pp.*, p.demanda, p.costoalmacenamiento, p.desviacionestandardemanda
+          SELECT pp.*, p.demanda, p.costoalmacenamiento, p.desviacionestandardemanda
+          FROM proveedor_producto pp
+          JOIN producto p ON pp.idproducto = p.idproducto
+          WHERE pp.idproducto = $1 AND pp.proveedor_predeterminado = TRUE
+          LIMIT 1
+        `, [id]);
+
+        // Si no hay proveedor predeterminado, usar el más barato como fallback
+        if (proveedorCheck.rows.length === 0) {
+          const fallbackCheck = await client.query(`
+            SELECT pp.*, p.demanda, p.costoalmacenamiento, p.desviacionestandardemanda
             FROM proveedor_producto pp
             JOIN producto p ON pp.idproducto = p.idproducto
             WHERE pp.idproducto = $1
             ORDER BY pp.preciounitario ASC
             LIMIT 1
-        `, [idproducto]);
-
-        const tieneDatosProveedor = proveedorCheck.rows.length > 0;
+          `, [id]);
+          
+          if (fallbackCheck.rows.length > 0) {
+            proveedorCheck.rows = fallbackCheck.rows;
+          }
+        }
 
         // Solo calcular costos si tenemos datos del proveedor
-        if (tieneDatosProveedor) {
+        if (proveedorCheck.rows.length > 0) {
             try {
                 // Calcular costos basados en el modelo actual
                 const modeloFinal = modeloinventario || modeloActual;

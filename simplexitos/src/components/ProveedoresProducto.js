@@ -26,6 +26,12 @@ import {
   useDisclosure,
   useToast,
   Heading,
+  HStack,
+  Text,
+  Badge,
+  Checkbox,
+  Alert,
+  AlertIcon,
 } from '@chakra-ui/react';
 import { AddIcon, EditIcon, DeleteIcon } from '@chakra-ui/icons';
 import { API_BASE_URL } from '../config';
@@ -43,7 +49,8 @@ export default function ProveedoresProducto({ productoId, nombreProducto }) {
     costopedido: 0,
     costocompra: 0,
     preciounitario: 0,
-    tiempoenvio: 0
+    tiempoenvio: 0,
+    proveedor_predeterminado: false
   });
 
   useEffect(() => {
@@ -195,7 +202,8 @@ export default function ProveedoresProducto({ productoId, nombreProducto }) {
       costopedido: proveedor.costopedido || 0,
       costocompra: proveedor.costocompra || 0,
       preciounitario: proveedor.preciounitario || 0,
-      tiempoenvio: proveedor.tiempoenvio || 0
+      tiempoenvio: proveedor.tiempoenvio || 0,
+      proveedor_predeterminado: proveedor.proveedor_predeterminado || false
     });
     onOpen();
   };
@@ -212,7 +220,8 @@ export default function ProveedoresProducto({ productoId, nombreProducto }) {
       costopedido: 0,
       costocompra: 0,
       preciounitario: 0,
-      tiempoenvio: 0
+      tiempoenvio: 0,
+      proveedor_predeterminado: false
     });
   };
 
@@ -231,40 +240,64 @@ export default function ProveedoresProducto({ productoId, nombreProducto }) {
             <Th>Precio Unitario</Th>
             <Th>Tiempo Envío (días)</Th>
             <Th>Costo Pedido</Th>
+            <Th>Predeterminado</Th>
             <Th>Acciones</Th>
           </Tr>
         </Thead>
         <Tbody>
           {proveedores.map((prov) => (
-            <Tr key={prov.idproveedorproducto}>
-              <Td>{prov.nombreprove}</Td>
+            <Tr key={prov.idproveedorproducto} bg={prov.proveedor_predeterminado ? 'green.50' : 'transparent'}>
+              <Td>
+                <HStack>
+                  <Text fontWeight={prov.proveedor_predeterminado ? 'bold' : 'normal'}>
+                    {prov.nombreprove}
+                  </Text>
+                  {prov.proveedor_predeterminado && (
+                    <Badge colorScheme="green" size="sm">
+                      ⭐ Principal
+                    </Badge>
+                  )}
+                </HStack>
+              </Td>
               <Td>${prov.preciounitario}</Td>
               <Td>{prov.tiempoenvio}</Td>
               <Td>${prov.costopedido}</Td>
               <Td>
-                <Button
-                  size="sm"
-                  leftIcon={<EditIcon />}
-                  mr={2}
-                  onClick={() => handleEdit(prov)}
-                >
-                  Editar
-                </Button>
-                <Button
-                  size="sm"
-                  leftIcon={<DeleteIcon />}
-                  colorScheme="red"
-                  onClick={() => handleDelete(prov.idproveedorproducto)}
-                >
-                  Eliminar
-                </Button>
+                {prov.proveedor_predeterminado ? (
+                  <Badge colorScheme="green" borderRadius="full" px={2}>
+                    ✓ Sí
+                  </Badge>
+                ) : (
+                  <Badge colorScheme="gray" borderRadius="full" px={2}>
+                    No
+                  </Badge>
+                )}
+              </Td>
+              <Td>
+                <HStack spacing={2}>
+                  <Button
+                    size="sm"
+                    leftIcon={<EditIcon />}
+                    onClick={() => handleEdit(prov)}
+                  >
+                    Editar
+                  </Button>
+                  <Button
+                    size="sm"
+                    leftIcon={<DeleteIcon />}
+                    colorScheme="red"
+                    onClick={() => handleDelete(prov.idproveedorproducto)}
+                  >
+                    Eliminar
+                  </Button>
+                </HStack>
               </Td>
             </Tr>
           ))}
         </Tbody>
       </Table>
 
-      <Modal isOpen={isOpen} onClose={onClose}>
+      <Modal isOpen={isOpen} onClose={onClose} size="6xl">
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>
@@ -341,6 +374,27 @@ export default function ProveedoresProducto({ productoId, nombreProducto }) {
                     <NumberDecrementStepper />
                   </NumberInputStepper>
                 </NumberInput>
+              </FormControl>
+
+              <FormControl mb={4}>
+                <Checkbox
+                  isChecked={formData.proveedor_predeterminado}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    proveedor_predeterminado: e.target.checked
+                  }))}
+                  colorScheme="green"
+                >
+                  Marcar como proveedor predeterminado
+                </Checkbox>
+                {formData.proveedor_predeterminado && (
+                  <Alert status="info" mt={2} size="sm">
+                    <AlertIcon />
+                    <Text fontSize="xs">
+                      Este proveedor será el principal para este producto. Solo puede haber un proveedor predeterminado por producto.
+                    </Text>
+                  </Alert>
+                )}
               </FormControl>
             </ModalBody>
             <ModalFooter>

@@ -417,7 +417,7 @@ export default function Productos() {
       )}
 
       {isProveedoresModalOpen && selectedProductForProveedores && (
-        <Modal isOpen={isProveedoresModalOpen} onClose={() => setIsProveedoresModalOpen(false)} size="xl">
+        <Modal isOpen={isProveedoresModalOpen} onClose={() => setIsProveedoresModalOpen(false)} size="6xl">
           <ModalOverlay />
           <ModalContent>
             <ModalHeader>Proveedores para {selectedProductForProveedores.nombreproducto}</ModalHeader>

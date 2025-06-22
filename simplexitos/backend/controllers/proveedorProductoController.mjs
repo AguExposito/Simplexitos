@@ -27,7 +27,8 @@ export const createProveedorProducto = async (req, res) => {
       costopedido, 
       costocompra, 
       preciounitario, 
-      tiempoenvio
+      tiempoenvio,
+      proveedor_predeterminado = false
     } = req.body;
     
     // Verificar si ya existe la relación
@@ -39,13 +40,22 @@ export const createProveedorProducto = async (req, res) => {
     if (checkResult.rows.length > 0) {
       return res.status(400).json({ error: 'Esta relación producto-proveedor ya existe' });
     }
+
+    // Si este proveedor será predeterminado, quitar el flag de otros proveedores del mismo producto
+    if (proveedor_predeterminado) {
+      await pool.query(`
+        UPDATE proveedor_producto 
+        SET proveedor_predeterminado = FALSE 
+        WHERE idproducto = $1
+      `, [idproducto]);
+    }
     
     const result = await pool.query(`
       INSERT INTO proveedor_producto 
-      (idproducto, idproveedor, costopedido, costocompra, preciounitario, tiempoenvio) 
-      VALUES ($1, $2, $3, $4, $5, $6) 
+      (idproducto, idproveedor, costopedido, costocompra, preciounitario, tiempoenvio, proveedor_predeterminado) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7) 
       RETURNING *
-    `, [idproducto, idproveedor, costopedido, costocompra, preciounitario, tiempoenvio]);
+    `, [idproducto, idproveedor, costopedido, costocompra, preciounitario, tiempoenvio, proveedor_predeterminado]);
     
     // Recalcular inventario automáticamente
     await recalcularInventarioProducto(idproducto);
@@ -65,7 +75,8 @@ export const updateProveedorProducto = async (req, res) => {
       costopedido, 
       costocompra, 
       preciounitario, 
-      tiempoenvio
+      tiempoenvio,
+      proveedor_predeterminado
     } = req.body;
     
     // Obtener el idproducto antes de actualizar
@@ -79,16 +90,26 @@ export const updateProveedorProducto = async (req, res) => {
     }
     
     const idproducto = getProductoResult.rows[0].idproducto;
+
+    // Si este proveedor será predeterminado, quitar el flag de otros proveedores del mismo producto
+    if (proveedor_predeterminado) {
+      await pool.query(`
+        UPDATE proveedor_producto 
+        SET proveedor_predeterminado = FALSE 
+        WHERE idproducto = $1 AND idproveedorproducto != $2
+      `, [idproducto, id]);
+    }
     
     const result = await pool.query(`
       UPDATE proveedor_producto 
       SET costopedido = COALESCE($1, costopedido),
           costocompra = COALESCE($2, costocompra),
           preciounitario = COALESCE($3, preciounitario),
-          tiempoenvio = COALESCE($4, tiempoenvio)
-      WHERE idproveedorproducto = $5
+          tiempoenvio = COALESCE($4, tiempoenvio),
+          proveedor_predeterminado = COALESCE($5, proveedor_predeterminado)
+      WHERE idproveedorproducto = $6
       RETURNING *
-    `, [costopedido, costocompra, preciounitario, tiempoenvio, id]);
+    `, [costopedido, costocompra, preciounitario, tiempoenvio, proveedor_predeterminado, id]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Relación no encontrada' });
@@ -161,7 +182,7 @@ export const getProductosByProveedor = async (req, res) => {
 // Función para recalcular inventario después de modificar relación proveedor-producto
 async function recalcularInventarioProducto(idproducto) {
   try {
-    // Obtener datos del producto y su mejor proveedor
+    // Obtener datos del producto y su proveedor predeterminado
     const result = await pool.query(`
       SELECT 
         p.idproducto,
@@ -174,14 +195,35 @@ async function recalcularInventarioProducto(idproducto) {
         pp.tiempoenvio
       FROM producto p
       LEFT JOIN proveedor_producto pp ON p.idproducto = pp.idproducto
-      WHERE p.idproducto = $1
-      ORDER BY pp.preciounitario ASC
+      WHERE p.idproducto = $1 AND pp.proveedor_predeterminado = TRUE
       LIMIT 1
     `, [idproducto]);
 
+    // Si no hay proveedor predeterminado, usar el más barato como fallback
     if (result.rows.length === 0) {
-      console.log('No se encontró información para recalcular inventario del producto:', idproducto);
-      return;
+      const fallbackResult = await pool.query(`
+        SELECT 
+          p.idproducto,
+          p.demanda,
+          p.costoalmacenamiento,
+          p.desviacionestandardemanda,
+          p.modeloproducto,
+          pp.costopedido,
+          pp.preciounitario,
+          pp.tiempoenvio
+        FROM producto p
+        LEFT JOIN proveedor_producto pp ON p.idproducto = pp.idproducto
+        WHERE p.idproducto = $1
+        ORDER BY pp.preciounitario ASC
+        LIMIT 1
+      `, [idproducto]);
+      
+      if (fallbackResult.rows.length === 0) {
+        console.log('No se encontró información para recalcular inventario del producto:', idproducto);
+        return;
+      }
+      
+      result.rows = fallbackResult.rows;
     }
 
     const { 

@@ -44,6 +44,11 @@ const proveedorproducto = db.define('proveedor_producto', {
     frecuenciadereabastecimiento: {
         type: DataTypes.INTEGER,
         allowNull: true
+    },
+    proveedor_predeterminado: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
     }
 }, {
     timestamps: false,

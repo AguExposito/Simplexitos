@@ -31,6 +31,10 @@ import {
   NumberDecrementStepper,
   Textarea,
   Container,
+  VStack,
+  Text,
+  Alert,
+  AlertIcon,
 } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { API_BASE_URL } from '../config';
@@ -39,6 +43,9 @@ export default function OrdenesCompra() {
   const [ordenes, setOrdenes] = useState([]);
   const [proveedores, setProveedores] = useState([]);
   const [inventario, setInventario] = useState([]);
+  const [productosPorProveedor, setProductosPorProveedor] = useState([]);
+  const [proveedoresPorProducto, setProveedoresPorProducto] = useState([]);
+  const [seleccionInicial, setSeleccionInicial] = useState('proveedor'); // 'proveedor' o 'producto'
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
 
@@ -54,6 +61,20 @@ export default function OrdenesCompra() {
     fetchProveedores();
     fetchInventario();
   }, []);
+
+  // Cargar productos por proveedor cuando se selecciona un proveedor
+  useEffect(() => {
+    if (formData.idproveedor && seleccionInicial === 'proveedor') {
+      fetchProductosPorProveedor(formData.idproveedor);
+    }
+  }, [formData.idproveedor, seleccionInicial]);
+
+  // Cargar proveedores por producto cuando se selecciona un producto
+  useEffect(() => {
+    if (formData.idinventario && seleccionInicial === 'producto') {
+      fetchProveedoresPorProducto(formData.idinventario);
+    }
+  }, [formData.idinventario, seleccionInicial]);
 
   const fetchOrdenes = async () => {
     try {
@@ -106,12 +127,91 @@ export default function OrdenesCompra() {
     }
   };
 
+  const fetchProductosPorProveedor = async (idproveedor) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/proveedor-producto/proveedor/${idproveedor}`);
+      if (response.ok) {
+        const data = await response.json();
+        setProductosPorProveedor(data);
+        if (data.length === 0) {
+          toast({
+            title: 'Sin productos',
+            description: 'Este proveedor no tiene productos asignados',
+            status: 'warning',
+            duration: 3000,
+            isClosable: true,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching products by provider:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudieron cargar los productos del proveedor',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const fetchProveedoresPorProducto = async (idinventario) => {
+    try {
+      // Obtener el idproducto del inventario
+      const inventarioItem = inventario.find(item => item.idinventario === parseInt(idinventario));
+      if (inventarioItem) {
+        const response = await fetch(`${API_BASE_URL}/proveedor-producto/producto/${inventarioItem.idproducto}`);
+        if (response.ok) {
+          const data = await response.json();
+          setProveedoresPorProducto(data);
+          if (data.length === 0) {
+            toast({
+              title: 'Sin proveedores',
+              description: 'Este producto no tiene proveedores asignados',
+              status: 'warning',
+              duration: 3000,
+              isClosable: true,
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching providers by product:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudieron cargar los proveedores del producto',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
+
+    // Limpiar la selección dependiente cuando cambia la selección inicial
+    if (name === 'idproveedor' && seleccionInicial === 'proveedor') {
+      setFormData(prev => ({ ...prev, idinventario: '' }));
+    } else if (name === 'idinventario' && seleccionInicial === 'producto') {
+      setFormData(prev => ({ ...prev, idproveedor: '' }));
+    }
+  };
+
+  const handleSeleccionInicialChange = (tipo) => {
+    setSeleccionInicial(tipo);
+    // Limpiar ambos campos cuando cambia el tipo de selección
+    setFormData(prev => ({
+      ...prev,
+      idinventario: '',
+      idproveedor: ''
+    }));
+    setProductosPorProveedor([]);
+    setProveedoresPorProducto([]);
   };
 
   const handleSubmit = async (e) => {
@@ -141,6 +241,8 @@ export default function OrdenesCompra() {
           descripcionordendecompra: '',
           cantidadsolicitada: 1
         });
+        setProductosPorProveedor([]);
+        setProveedoresPorProducto([]);
       } else {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Error al crear la orden de compra');
@@ -164,7 +266,7 @@ export default function OrdenesCompra() {
 
   const getProductoNombre = (idinventario) => {
     const item = inventario.find(i => i.idinventario === idinventario);
-    return item ? item.producto?.nombreproducto || 'N/A' : 'N/A';
+    return item ? `${item.nombreproducto || 'N/A'} (ID: ${item.idinventario})` : 'N/A';
   };
 
   const getEstadoBadge = (estado) => {
@@ -250,46 +352,143 @@ export default function OrdenesCompra() {
           </Table>
         </Box>
 
-        <Modal isOpen={isOpen} onClose={onClose}>
+        <Modal isOpen={isOpen} onClose={onClose} size="6xl">
           <ModalOverlay />
           <ModalContent>
             <ModalHeader>Nueva Orden de Compra</ModalHeader>
             <ModalCloseButton />
             <ModalBody>
               <form onSubmit={handleSubmit}>
-                <FormControl mb={4}>
-                  <FormLabel>Producto</FormLabel>
-                  <Select
-                    name="idinventario"
-                    value={formData.idinventario}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    <option value="">Seleccione un producto</option>
-                    {inventario.map((item) => (
-                      <option key={item.idinventario} value={item.idinventario}>
-                        {item.producto?.nombreproducto || `Producto ${item.idinventario}`}
-                      </option>
-                    ))}
-                  </Select>
-                </FormControl>
+                <Alert status="info" mb={4}>
+                  <AlertIcon />
+                  <VStack align="start" spacing={1}>
+                    <Text fontWeight="bold">Selección Dependiente</Text>
+                    <Text fontSize="sm">
+                      Elige si quieres seleccionar primero el proveedor o el producto. 
+                      Luego solo se mostrarán las opciones disponibles.
+                    </Text>
+                  </VStack>
+                </Alert>
 
-                <FormControl mb={4}>
-                  <FormLabel>Proveedor</FormLabel>
-                  <Select
-                    name="idproveedor"
-                    value={formData.idproveedor}
-                    onChange={handleInputChange}
-                    required
+                <HStack spacing={4} mb={4}>
+                  <Button
+                    size="sm"
+                    colorScheme={seleccionInicial === 'proveedor' ? 'blue' : 'gray'}
+                    onClick={() => handleSeleccionInicialChange('proveedor')}
                   >
-                    <option value="">Seleccione un proveedor</option>
-                    {proveedores.map((proveedor) => (
-                      <option key={proveedor.idproveedor} value={proveedor.idproveedor}>
-                        {proveedor.nombreprove}
-                      </option>
-                    ))}
-                  </Select>
-                </FormControl>
+                    Seleccionar Proveedor Primero
+                  </Button>
+                  <Button
+                    size="sm"
+                    colorScheme={seleccionInicial === 'producto' ? 'blue' : 'gray'}
+                    onClick={() => handleSeleccionInicialChange('producto')}
+                  >
+                    Seleccionar Producto Primero
+                  </Button>
+                </HStack>
+
+                {seleccionInicial === 'proveedor' ? (
+                  <>
+                    <FormControl mb={4}>
+                      <FormLabel>Proveedor</FormLabel>
+                      <Select
+                        name="idproveedor"
+                        value={formData.idproveedor}
+                        onChange={handleInputChange}
+                        required
+                      >
+                        <option value="">Seleccione un proveedor</option>
+                        {proveedores.map((proveedor) => (
+                          <option key={proveedor.idproveedor} value={proveedor.idproveedor}>
+                            {proveedor.nombreprove}
+                          </option>
+                        ))}
+                      </Select>
+                    </FormControl>
+
+                    <FormControl mb={4}>
+                      <FormLabel>Producto (disponible para el proveedor seleccionado)</FormLabel>
+                      <Select
+                        name="idinventario"
+                        value={formData.idinventario}
+                        onChange={handleInputChange}
+                        required
+                        isDisabled={!formData.idproveedor}
+                      >
+                        <option value="">
+                          {formData.idproveedor 
+                            ? productosPorProveedor.length > 0
+                              ? `Seleccione un producto (${productosPorProveedor.length} disponibles)`
+                              : 'Este proveedor no tiene productos asignados'
+                            : 'Primero seleccione un proveedor'
+                          }
+                        </option>
+                        {productosPorProveedor.map((producto) => {
+                          const inventarioItem = inventario.find(item => item.idproducto === producto.idproducto);
+                          return inventarioItem ? (
+                            <option key={inventarioItem.idinventario} value={inventarioItem.idinventario}>
+                              {producto.nombreproducto} - ${producto.preciounitario}
+                            </option>
+                          ) : null;
+                        })}
+                      </Select>
+                      {formData.idproveedor && productosPorProveedor.length === 0 && (
+                        <Text fontSize="sm" color="orange.500" mt={1}>
+                          ⚠️ Este proveedor no tiene productos asignados. Asigna productos al proveedor desde la sección "Proveedores".
+                        </Text>
+                      )}
+                    </FormControl>
+                  </>
+                ) : (
+                  <>
+                    <FormControl mb={4}>
+                      <FormLabel>Producto</FormLabel>
+                      <Select
+                        name="idinventario"
+                        value={formData.idinventario}
+                        onChange={handleInputChange}
+                        required
+                      >
+                        <option value="">Seleccione un producto</option>
+                        {inventario.map((item) => (
+                          <option key={item.idinventario} value={item.idinventario}>
+                            {item.nombreproducto ? `${item.nombreproducto} (ID: ${item.idinventario})` : `Producto ${item.idinventario}`}
+                          </option>
+                        ))}
+                      </Select>
+                    </FormControl>
+
+                    <FormControl mb={4}>
+                      <FormLabel>Proveedor (que suministra el producto seleccionado)</FormLabel>
+                      <Select
+                        name="idproveedor"
+                        value={formData.idproveedor}
+                        onChange={handleInputChange}
+                        required
+                        isDisabled={!formData.idinventario}
+                      >
+                        <option value="">
+                          {formData.idinventario 
+                            ? proveedoresPorProducto.length > 0
+                              ? `Seleccione un proveedor (${proveedoresPorProducto.length} disponibles)`
+                              : 'Este producto no tiene proveedores asignados'
+                            : 'Primero seleccione un producto'
+                          }
+                        </option>
+                        {proveedoresPorProducto.map((proveedor) => (
+                          <option key={proveedor.idproveedor} value={proveedor.idproveedor}>
+                            {proveedor.nombreprove} - ${proveedor.preciounitario}
+                          </option>
+                        ))}
+                      </Select>
+                      {formData.idinventario && proveedoresPorProducto.length === 0 && (
+                        <Text fontSize="sm" color="orange.500" mt={1}>
+                          ⚠️ Este producto no tiene proveedores asignados. Asigna proveedores al producto desde la sección "Productos".
+                        </Text>
+                      )}
+                    </FormControl>
+                  </>
+                )}
 
                 <FormControl mb={4}>
                   <FormLabel>Cantidad</FormLabel>
@@ -320,7 +519,11 @@ export default function OrdenesCompra() {
                   <Button variant="ghost" mr={3} onClick={onClose}>
                     Cancelar
                   </Button>
-                  <Button colorScheme="blue" type="submit">
+                  <Button 
+                    colorScheme="blue" 
+                    type="submit"
+                    isDisabled={!formData.idinventario || !formData.idproveedor}
+                  >
                     Crear Orden
                   </Button>
                 </ModalFooter>
