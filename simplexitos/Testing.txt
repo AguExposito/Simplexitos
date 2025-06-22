@@ -1,0 +1,56 @@
+TEST
+MATE IMPERIAL – Periodo Fijo
+Demanda anual: 60 Unidades al año
+Costo de pedido: $60
+Costo de almacenamiento por unidad por año: $3
+Precio unitario: $32
+Tiempo de envío (en días): 6 
+Desviación estándar de la demanda diaria: 2
+Stock actual: 52 Unidades
+RESULTADOS ESPERADOS
+Lote Optimo: 107
+Stock Seguridad: 57,18 Unidades
+Punto Pedido: 58 Unidades
+Frecuencia de Reabastecimiento: 1,22 veces al año
+RESULTADOS BRINDADOS
+Lote Optimo: 106 Unidades
+Stock Seguridad: 57 Unidades
+Punto Pedido: 58 Unidades
+Frecuencia de Reabastecimiento: 1,22 veces al año
+
+MATE IMPERIAL – Lote fijo
+Demanda anual: $6000
+Costo de pedido: $60
+Costo de almacenamiento por unidad por año: $10
+Precio unitario: $32
+Tiempo de envío (en días): 6 
+Desviación estándar de la demanda diaria: 10
+Stock actual: 52 Unidades
+RESULTADOS ESPERADOS
+Lote Optimo: 268,33 Unidades
+Stock Seguridad: 40,17 Unidades
+Punto Pedido: 138,78 Unidades
+RESULTADOS BRINDADOS
+Lote Optimo: 268 Unidades
+Stock Seguridad: 40 Unidades
+Punto Pedido: 139 Unidades
+
+MATE METAL – Periodo FIjo
+Demanda anual: 100 Unidades al año
+Costo de pedido: $100
+Costo de almacenamiento por unidad por año: $20
+Precio unitario: $25
+Tiempo de envío (en días): 1 
+Desviación estándar de la demanda diaria: 1
+Stock actual: 52 Unidades
+RESULTADOS ESPERADOS
+Lote Optimo: 49,62 Unidades
+Stock Seguridad: 17,66 Unidades
+Punto Pedido:  18 Unidades
+Frecuencia de Reabastecimiento 3,16veces al año
+
+RESULTADOS BRINDADOS
+Lote Optimo: 50 Unidades
+Stock Seguridad: 18 Unidades
+Punto Pedido:  18 Unidades
+Frecuencia de Reabastecimiento 3,16veces al año
