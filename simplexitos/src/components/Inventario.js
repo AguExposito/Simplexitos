@@ -19,7 +19,6 @@ import {
   StatHelpText,
   StatArrow,
   useToast,
-  useDisclosure,
   Modal,
   ModalOverlay,
   ModalContent,
@@ -30,7 +29,6 @@ import {
   VStack,
   Grid,
   GridItem,
-  Divider,
   useColorModeValue,
   Progress,
   Flex,
@@ -39,6 +37,7 @@ import {
 import { EditIcon, AddIcon, TimeIcon, RepeatIcon, ViewIcon, SearchIcon } from '@chakra-ui/icons';
 import { API_BASE_URL } from '../config';
 import InventarioForm from './InventarioForm';
+import InventarioCharts from './InventarioCharts';
 
 export default function Inventario() {
   const [inventario, setInventario] = useState([]);
@@ -52,21 +51,7 @@ export default function Inventario() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [filtroEstado, setFiltroEstado] = useState('TODOS');
   const [filtroStock, setFiltroStock] = useState('TODOS');
-  const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
-  const [formData, setFormData] = useState({
-    idproducto: '',
-    stock: 0,
-    demanda: 0,
-    costoalmacenamiento: 0,
-    costocompra: 0,
-    costopedido: 0,
-    puntopedido: 0,
-    stockseguridad: 0,
-    loteoptimo: 0,
-    modeloinventario: 'LOTE_FIJO',
-    cgi: 0
-  });
   const [analisisProducto, setAnalisisProducto] = useState(null);
 
   // Mover los useColorModeValue al nivel superior
@@ -74,7 +59,6 @@ export default function Inventario() {
   const bgBlue = useColorModeValue('blue.50', 'blue.900');
   const bgGreen = useColorModeValue('green.50', 'green.900');
   const bgPurple = useColorModeValue('purple.50', 'purple.900');
-  const textGray = useColorModeValue('gray.600', 'gray.300');
 
   useEffect(() => {
     fetchInventario();
@@ -292,23 +276,6 @@ export default function Inventario() {
     });
 
     return { stockInsuficiente, stockSuficiente };
-  };
-
-  // Función para calcular el valor total del inventario
-  const calcularValorTotal = () => {
-    const inventarioFiltrado = getInventarioFiltrado();
-    let valorTotal = 0;
-
-    inventarioFiltrado.forEach(item => {
-      const producto = productos.find(p => p.idproducto === item.idproducto);
-      if (producto && item.stock > 0) {
-        // Buscar el precio unitario del proveedor más barato
-        const precioUnitario = item.preciounitario || 0;
-        valorTotal += item.stock * precioUnitario;
-      }
-    });
-
-    return valorTotal;
   };
 
   const handleFiltroChange = (nuevoFiltro) => {
@@ -1020,231 +987,242 @@ export default function Inventario() {
                   </Grid>
                 </Box>
 
-                {/* Layout principal con 3 columnas */}
-                <Grid templateColumns="repeat(3, 1fr)" gap={6}>
-                  {/* Columna 1: Costos y Análisis Financiero */}
-                  <GridItem>
-                    <VStack align="stretch" spacing={6}>
-                      {/* Gráfica de Costos Mejorada */}
-                      <Box p={6} borderRadius="lg" bg={bgBlue} boxShadow="md">
-                        <Text fontSize="lg" fontWeight="bold" mb={4} color="blue.700">
-                          Análisis de Costos
-                        </Text>
-                        <CostChart data={analisisProducto} />
-                      </Box>
+                {/* Layout principal con 2 filas */}
+                <VStack spacing={6} align="stretch">
+                  {/* Fila 1: Gráficos principales */}
+                  <Grid templateColumns="repeat(2, 1fr)" gap={6}>
+                    {/* Gráficos de Inventario - Ocupa toda la primera fila */}
+                    <GridItem colSpan={2}>
+                      <InventarioCharts 
+                        analisisProducto={analisisProducto} 
+                        ultimasOrdenes={analisisProducto.ultimasOrdenes || []} 
+                      />
+                    </GridItem>
+                  </Grid>
 
-                      {/* Información de Stock */}
-                      <Box p={6} borderRadius="lg" bg={bgPurple} boxShadow="md">
-                        <Text fontSize="lg" fontWeight="bold" mb={4} color="purple.700">
-                          Estado del Stock
-                        </Text>
-                        <VStack align="stretch" spacing={3}>
-                          <Flex justify="space-between" align="center">
-                            <Text fontWeight="medium">Stock Actual:</Text>
-                            <Badge 
-                              colorScheme={analisisProducto.stock > (analisisProducto.stockseguridad || 0) ? 'green' : 'red'}
-                              fontSize="md"
-                              p={2}
-                            >
-                              {analisisProducto.stock || 0} unidades
-                            </Badge>
-                          </Flex>
-                          <Flex justify="space-between" align="center">
-                            <Text fontWeight="medium">Stock de Seguridad:</Text>
-                            <Text fontWeight="bold">{analisisProducto.stockseguridad || 0} unidades</Text>
-                          </Flex>
-                          {analisisProducto.modeloinventario === 'LOTE_FIJO' ? (
-                            <Flex justify="space-between" align="center">
-                              <Text fontWeight="medium">Punto de Pedido:</Text>
-                              <Text fontWeight="bold">{analisisProducto.puntopedido || 0} unidades</Text>
-                            </Flex>
-                          ) : (
-                            <Flex justify="space-between" align="center">
-                              <Text fontWeight="medium">Frecuencia Reabastecimiento:</Text>
-                              <Text fontWeight="bold">
-                                {analisisProducto.frecuenciaReabastecimiento || '0.00'} pedidos/año
-                              </Text>
-                            </Flex>
-                          )}
-                        </VStack>
-                      </Box>
-                    </VStack>
-                  </GridItem>
-
-                  {/* Columna 2: Historial y Métricas */}
-                  <GridItem>
-                    <VStack align="stretch" spacing={6}>
-                      {/* Historial de Pedidos Mejorado */}
-                      <Box p={6} borderRadius="lg" bg={bgGreen} boxShadow="md">
-                        <Text fontSize="lg" fontWeight="bold" mb={4} color="green.700">
-                          Historial de Pedidos
-                        </Text>
-                        <VStack align="stretch" spacing={3}>
-                          <Flex justify="space-between" align="center">
-                            <Text fontWeight="medium">Total Órdenes:</Text>
-                            <Badge colorScheme="blue" fontSize="md" p={2}>
-                              {analisisProducto.frecuenciaHistorica?.totalOrdenes || 0}
-                            </Badge>
-                          </Flex>
-                          <Flex justify="space-between" align="center">
-                            <Text fontWeight="medium">Frecuencia Promedio:</Text>
-                            <Text fontWeight="bold">
-                              {analisisProducto.frecuenciaHistorica?.frecuencia || 0} pedidos/año
-                            </Text>
-                          </Flex>
-                          <Flex justify="space-between" align="center">
-                            <Text fontWeight="medium">Período Promedio:</Text>
-                            <Text fontWeight="bold">
-                              {analisisProducto.frecuenciaHistorica?.periodoPromedio || 0} días
-                            </Text>
-                          </Flex>
-                          <Flex justify="space-between" align="center">
-                            <Text fontWeight="medium">Cantidad Promedio:</Text>
-                            <Text fontWeight="bold">
-                              {analisisProducto.frecuenciaHistorica?.cantidadPromedio || 0} unidades
-                            </Text>
-                          </Flex>
-                          {analisisProducto.frecuenciaHistorica?.totalOrdenes === 0 && (
-                            <Box p={3} bg="gray.100" borderRadius="md">
-                              <Text fontSize="sm" color="gray.600" textAlign="center">
-                                No hay órdenes de compra históricas para este producto
-                              </Text>
-                            </Box>
-                          )}
-                        </VStack>
-                      </Box>
-
-                      {/* Métricas de Rendimiento */}
-                      <Box p={6} borderRadius="lg" bg={bgGray} boxShadow="md">
-                        <Text fontSize="lg" fontWeight="bold" mb={4} color="gray.700">
-                          Métricas de Rendimiento
-                        </Text>
-                        <VStack align="stretch" spacing={3}>
-                          <Flex justify="space-between" align="center">
-                            <Text fontWeight="medium">Eficiencia de Stock:</Text>
-                            <Badge 
-                              colorScheme={
-                                analisisProducto.stock > (analisisProducto.stockseguridad || 0) ? 'green' : 
-                                analisisProducto.stock > 0 ? 'yellow' : 'red'
-                              }
-                              fontSize="md"
-                            >
-                              {analisisProducto.stock > (analisisProducto.stockseguridad || 0) ? 'Óptima' : 
-                               analisisProducto.stock > 0 ? 'Media' : 'Baja'}
-                            </Badge>
-                          </Flex>
-                          <Flex justify="space-between" align="center">
-                            <Text fontWeight="medium">Rotación Anual:</Text>
-                            <Text fontWeight="bold">
-                              {analisisProducto.demanda && analisisProducto.stock > 0 
-                                ? (analisisProducto.demanda / analisisProducto.stock).toFixed(2) 
-                                : '0.00'} veces
-                            </Text>
-                          </Flex>
-                          <Flex justify="space-between" align="center">
-                            <Text fontWeight="medium">Cobertura de Stock:</Text>
-                            <Text fontWeight="bold">
-                              {analisisProducto.demanda && analisisProducto.stock > 0 
-                                ? (analisisProducto.stock / (analisisProducto.demanda / 365)).toFixed(1) 
-                                : '0.0'} días
-                            </Text>
-                          </Flex>
-                        </VStack>
-                      </Box>
-                    </VStack>
-                  </GridItem>
-
-                  {/* Columna 3: Últimas Órdenes y Acciones */}
-                  <GridItem>
-                    <VStack align="stretch" spacing={6}>
-                      {/* Últimas Órdenes de Compra */}
-                      {analisisProducto.ultimasOrdenes && analisisProducto.ultimasOrdenes.length > 0 ? (
+                  {/* Fila 2: Información detallada en 3 columnas */}
+                  <Grid templateColumns="repeat(3, 1fr)" gap={6}>
+                    {/* Columna 1: Costos y Análisis Financiero */}
+                    <GridItem>
+                      <VStack align="stretch" spacing={6}>
+                        {/* Gráfica de Costos Mejorada */}
                         <Box p={6} borderRadius="lg" bg={bgBlue} boxShadow="md">
                           <Text fontSize="lg" fontWeight="bold" mb={4} color="blue.700">
-                            Últimas Órdenes de Compra ({analisisProducto.ultimasOrdenes.length})
+                            Análisis de Costos
+                          </Text>
+                          <CostChart data={analisisProducto} />
+                        </Box>
+
+                        {/* Información de Stock */}
+                        <Box p={6} borderRadius="lg" bg={bgPurple} boxShadow="md">
+                          <Text fontSize="lg" fontWeight="bold" mb={4} color="purple.700">
+                            Estado del Stock
                           </Text>
                           <VStack align="stretch" spacing={3}>
-                            {analisisProducto.ultimasOrdenes.map((orden, index) => (
-                              <Box key={index} p={4} bg="white" borderRadius="md" boxShadow="sm">
-                                <Flex justify="space-between" align="center" mb={2}>
-                                  <Text fontSize="md" fontWeight="bold">
-                                    Orden #{orden.idorden_compra}
-                                  </Text>
-                                  <Badge 
-                                    colorScheme={
-                                      orden.estadoorden === 'FINALIZADA' ? 'green' :
-                                      orden.estadoorden === 'ENVIADA' ? 'blue' : 
-                                      orden.estadoorden === 'PENDIENTE' ? 'yellow' : 'red'
-                                    }
-                                    size="sm"
-                                  >
-                                    {orden.estadoorden}
-                                  </Badge>
-                                </Flex>
-                                <Text fontSize="sm" color="gray.600" mb={1}>
-                                  {new Date(orden.fechaorden).toLocaleDateString('es-ES', {
-                                    year: 'numeric',
-                                    month: 'long',
-                                    day: 'numeric'
-                                  })}
+                            <Flex justify="space-between" align="center">
+                              <Text fontWeight="medium">Stock Actual:</Text>
+                              <Badge 
+                                colorScheme={analisisProducto.stock > (analisisProducto.stockseguridad || 0) ? 'green' : 'red'}
+                                fontSize="md"
+                                p={2}
+                              >
+                                {analisisProducto.stock || 0} unidades
+                              </Badge>
+                            </Flex>
+                            <Flex justify="space-between" align="center">
+                              <Text fontWeight="medium">Stock de Seguridad:</Text>
+                              <Text fontWeight="bold">{analisisProducto.stockseguridad || 0} unidades</Text>
+                            </Flex>
+                            {analisisProducto.modeloinventario === 'LOTE_FIJO' ? (
+                              <Flex justify="space-between" align="center">
+                                <Text fontWeight="medium">Punto de Pedido:</Text>
+                                <Text fontWeight="bold">{analisisProducto.puntopedido || 0} unidades</Text>
+                              </Flex>
+                            ) : (
+                              <Flex justify="space-between" align="center">
+                                <Text fontWeight="medium">Frecuencia Reabastecimiento:</Text>
+                                <Text fontWeight="bold">
+                                  {analisisProducto.frecuenciaReabastecimiento || '0.00'} pedidos/año
                                 </Text>
-                                <Text fontSize="sm" mb={1}>
-                                  <strong>Cantidad:</strong> {orden.cantidadsolicitada} unidades
-                                </Text>
-                                <Text fontSize="sm" mb={1}>
-                                  <strong>Proveedor:</strong> {orden.nombreprove}
-                                </Text>
-                                {orden.descripcionordendecompra && (
-                                  <Text fontSize="xs" color="gray.500" fontStyle="italic">
-                                    {orden.descripcionordendecompra}
-                                  </Text>
-                                )}
-                              </Box>
-                            ))}
+                              </Flex>
+                            )}
                           </VStack>
                         </Box>
-                      ) : (
+                      </VStack>
+                    </GridItem>
+
+                    {/* Columna 2: Historial y Métricas */}
+                    <GridItem>
+                      <VStack align="stretch" spacing={6}>
+                        {/* Historial de Pedidos Mejorado */}
+                        <Box p={6} borderRadius="lg" bg={bgGreen} boxShadow="md">
+                          <Text fontSize="lg" fontWeight="bold" mb={4} color="green.700">
+                            Historial de Pedidos
+                          </Text>
+                          <VStack align="stretch" spacing={3}>
+                            <Flex justify="space-between" align="center">
+                              <Text fontWeight="medium">Total Órdenes:</Text>
+                              <Badge colorScheme="blue" fontSize="md" p={2}>
+                                {analisisProducto.frecuenciaHistorica?.totalOrdenes || 0}
+                              </Badge>
+                            </Flex>
+                            <Flex justify="space-between" align="center">
+                              <Text fontWeight="medium">Frecuencia Promedio:</Text>
+                              <Text fontWeight="bold">
+                                {analisisProducto.frecuenciaHistorica?.frecuencia || 0} pedidos/año
+                              </Text>
+                            </Flex>
+                            <Flex justify="space-between" align="center">
+                              <Text fontWeight="medium">Período Promedio:</Text>
+                              <Text fontWeight="bold">
+                                {analisisProducto.frecuenciaHistorica?.periodoPromedio || 0} días
+                              </Text>
+                            </Flex>
+                            <Flex justify="space-between" align="center">
+                              <Text fontWeight="medium">Cantidad Promedio:</Text>
+                              <Text fontWeight="bold">
+                                {analisisProducto.frecuenciaHistorica?.cantidadPromedio || 0} unidades
+                              </Text>
+                            </Flex>
+                            {analisisProducto.frecuenciaHistorica?.totalOrdenes === 0 && (
+                              <Box p={3} bg="gray.100" borderRadius="md">
+                                <Text fontSize="sm" color="gray.600" textAlign="center">
+                                  No hay órdenes de compra históricas para este producto
+                                </Text>
+                              </Box>
+                            )}
+                          </VStack>
+                        </Box>
+
+                        {/* Métricas de Rendimiento */}
                         <Box p={6} borderRadius="lg" bg={bgGray} boxShadow="md">
                           <Text fontSize="lg" fontWeight="bold" mb={4} color="gray.700">
-                            Órdenes de Compra
+                            Métricas de Rendimiento
                           </Text>
-                          <Box p={4} bg="white" borderRadius="md">
-                            <Text fontSize="sm" color="gray.600" textAlign="center">
-                              No hay órdenes de compra registradas para este producto
-                            </Text>
-                          </Box>
+                          <VStack align="stretch" spacing={3}>
+                            <Flex justify="space-between" align="center">
+                              <Text fontWeight="medium">Eficiencia de Stock:</Text>
+                              <Badge 
+                                colorScheme={
+                                  analisisProducto.stock > (analisisProducto.stockseguridad || 0) ? 'green' : 
+                                  analisisProducto.stock > 0 ? 'yellow' : 'red'
+                                }
+                                fontSize="md"
+                              >
+                                {analisisProducto.stock > (analisisProducto.stockseguridad || 0) ? 'Óptima' : 
+                                 analisisProducto.stock > 0 ? 'Media' : 'Baja'}
+                              </Badge>
+                            </Flex>
+                            <Flex justify="space-between" align="center">
+                              <Text fontWeight="medium">Rotación Anual:</Text>
+                              <Text fontWeight="bold">
+                                {analisisProducto.demanda && analisisProducto.stock > 0 
+                                  ? (analisisProducto.demanda / analisisProducto.stock).toFixed(2) 
+                                  : '0.00'} veces
+                              </Text>
+                            </Flex>
+                            <Flex justify="space-between" align="center">
+                              <Text fontWeight="medium">Cobertura de Stock:</Text>
+                              <Text fontWeight="bold">
+                                {analisisProducto.demanda && analisisProducto.stock > 0 
+                                  ? (analisisProducto.stock / (analisisProducto.demanda / 365)).toFixed(1) 
+                                  : '0.0'} días
+                              </Text>
+                            </Flex>
+                          </VStack>
                         </Box>
-                      )}
+                      </VStack>
+                    </GridItem>
 
-                      {/* Información del Proveedor */}
-                      <Box p={6} borderRadius="lg" bg={bgPurple} boxShadow="md">
-                        <Text fontSize="lg" fontWeight="bold" mb={4} color="purple.700">
-                          Información del Proveedor
-                        </Text>
-                        <VStack align="stretch" spacing={3}>
-                          <Flex justify="space-between" align="center">
-                            <Text fontWeight="medium">Precio Unitario:</Text>
-                            <Text fontWeight="bold">
-                              ${analisisProducto.preciounitario?.toFixed(2) || '0.00'}
+                    {/* Columna 3: Últimas Órdenes y Acciones */}
+                    <GridItem>
+                      <VStack align="stretch" spacing={6}>
+                        {/* Últimas Órdenes de Compra - Versión compacta */}
+                        {analisisProducto.ultimasOrdenes && analisisProducto.ultimasOrdenes.length > 0 ? (
+                          <Box p={6} borderRadius="lg" bg={bgBlue} boxShadow="md">
+                            <Text fontSize="lg" fontWeight="bold" mb={4} color="blue.700">
+                              Últimas Órdenes ({analisisProducto.ultimasOrdenes.length})
                             </Text>
-                          </Flex>
-                          <Flex justify="space-between" align="center">
-                            <Text fontWeight="medium">Costo de Pedido:</Text>
-                            <Text fontWeight="bold">
-                              ${analisisProducto.costopedido?.toFixed(2) || '0.00'}
+                            <VStack align="stretch" spacing={2} maxH="300px" overflowY="auto">
+                              {analisisProducto.ultimasOrdenes.slice(0, 5).map((orden, index) => (
+                                <Box key={index} p={3} bg="white" borderRadius="md" boxShadow="sm">
+                                  <Flex justify="space-between" align="center" mb={1}>
+                                    <Text fontSize="sm" fontWeight="bold">
+                                      #{orden.idorden_compra}
+                                    </Text>
+                                    <Badge 
+                                      colorScheme={
+                                        orden.estadoorden === 'FINALIZADA' ? 'green' :
+                                        orden.estadoorden === 'ENVIADA' ? 'blue' : 
+                                        orden.estadoorden === 'PENDIENTE' ? 'yellow' : 'red'
+                                      }
+                                      size="sm"
+                                    >
+                                      {orden.estadoorden}
+                                    </Badge>
+                                  </Flex>
+                                  <Text fontSize="xs" color="gray.600" mb={1}>
+                                    {new Date(orden.fechaorden).toLocaleDateString('es-ES', {
+                                      year: 'numeric',
+                                      month: 'short',
+                                      day: 'numeric'
+                                    })}
+                                  </Text>
+                                  <Text fontSize="xs" mb={1}>
+                                    <strong>{orden.cantidadsolicitada}</strong> unidades - {orden.nombreprove}
+                                  </Text>
+                                </Box>
+                              ))}
+                              {analisisProducto.ultimasOrdenes.length > 5 && (
+                                <Text fontSize="xs" color="gray.500" textAlign="center">
+                                  +{analisisProducto.ultimasOrdenes.length - 5} órdenes más
+                                </Text>
+                              )}
+                            </VStack>
+                          </Box>
+                        ) : (
+                          <Box p={6} borderRadius="lg" bg={bgGray} boxShadow="md">
+                            <Text fontSize="lg" fontWeight="bold" mb={4} color="gray.700">
+                              Órdenes de Compra
                             </Text>
-                          </Flex>
-                          <Flex justify="space-between" align="center">
-                            <Text fontWeight="medium">Tiempo de Envío:</Text>
-                            <Text fontWeight="bold">
-                              {analisisProducto.tiempoenvio || 0} días
-                            </Text>
-                          </Flex>
-                        </VStack>
-                      </Box>
-                    </VStack>
-                  </GridItem>
-                </Grid>
+                            <Box p={4} bg="white" borderRadius="md">
+                              <Text fontSize="sm" color="gray.600" textAlign="center">
+                                No hay órdenes de compra registradas
+                              </Text>
+                            </Box>
+                          </Box>
+                        )}
+
+                        {/* Información del Proveedor */}
+                        <Box p={6} borderRadius="lg" bg={bgPurple} boxShadow="md">
+                          <Text fontSize="lg" fontWeight="bold" mb={4} color="purple.700">
+                            Información del Proveedor
+                          </Text>
+                          <VStack align="stretch" spacing={3}>
+                            <Flex justify="space-between" align="center">
+                              <Text fontWeight="medium">Precio Unitario:</Text>
+                              <Text fontWeight="bold">
+                                ${analisisProducto.preciounitario?.toFixed(2) || '0.00'}
+                              </Text>
+                            </Flex>
+                            <Flex justify="space-between" align="center">
+                              <Text fontWeight="medium">Costo de Pedido:</Text>
+                              <Text fontWeight="bold">
+                                ${analisisProducto.costopedido?.toFixed(2) || '0.00'}
+                              </Text>
+                            </Flex>
+                            <Flex justify="space-between" align="center">
+                              <Text fontWeight="medium">Tiempo de Envío:</Text>
+                              <Text fontWeight="bold">
+                                {analisisProducto.tiempoenvio || 0} días
+                              </Text>
+                            </Flex>
+                          </VStack>
+                        </Box>
+                      </VStack>
+                    </GridItem>
+                  </Grid>
+                </VStack>
               </ModalBody>
             </ModalContent>
           </Modal>
