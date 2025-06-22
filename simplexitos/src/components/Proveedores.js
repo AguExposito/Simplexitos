@@ -22,13 +22,21 @@ import {
   useToast,
   Heading,
   HStack,
+  Badge,
+  Alert,
+  AlertIcon,
+  Text,
 } from '@chakra-ui/react';
 import { AddIcon, EditIcon, DeleteIcon } from '@chakra-ui/icons';
 import { API_BASE_URL } from '../config';
+import ProductosProveedor from './ProductosProveedor';
 
 export default function Proveedores() {
   const [proveedores, setProveedores] = useState([]);
   const [selectedProveedor, setSelectedProveedor] = useState(null);
+  const [showProductos, setShowProductos] = useState(false);
+  const [selectedProveedorForProductos, setSelectedProveedorForProductos] = useState(null);
+  const [isProductosModalOpen, setIsProductosModalOpen] = useState(false);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
 
@@ -91,6 +99,7 @@ export default function Proveedores() {
       });
 
       if (response.ok) {
+        const newProveedor = await response.json();
         toast({
           title: 'Éxito',
           description: `Proveedor ${selectedProveedor ? 'actualizado' : 'creado'} correctamente`,
@@ -98,6 +107,13 @@ export default function Proveedores() {
           duration: 3000,
           isClosable: true,
         });
+        
+        // Si es un proveedor nuevo, abrir inmediatamente el modal de productos
+        if (!selectedProveedor) {
+          setSelectedProveedorForProductos(newProveedor);
+          setIsProductosModalOpen(true);
+        }
+        
         fetchProveedores();
         onClose();
       }
@@ -123,8 +139,37 @@ export default function Proveedores() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('¿Está seguro de eliminar este proveedor?')) {
-      try {
+    try {
+      // Primero verificar el estado del proveedor
+      const statusResponse = await fetch(`${API_BASE_URL}/proveedor/${id}/status`);
+      const statusData = await statusResponse.json();
+      
+      if (!statusData.canDelete) {
+        let message = `No se puede eliminar el proveedor "${statusData.proveedor.nombreprove}":\n\n`;
+        
+        if (statusData.reasons.hasProducts) {
+          message += `• Tiene ${statusData.productosAsignados.length} producto(s) asignado(s)\n`;
+        }
+        
+        if (statusData.reasons.hasActiveOrders) {
+          message += `• Tiene ${statusData.ordenesPendientes.length} orden(es) pendiente(s)\n`;
+          message += `• Tiene ${statusData.ordenesEnviadas.length} orden(es) enviada(s)\n`;
+        }
+        
+        message += '\nDebe resolver estos problemas antes de eliminar el proveedor.';
+        
+        toast({
+          title: 'No se puede eliminar',
+          description: message,
+          status: 'warning',
+          duration: 8000,
+          isClosable: true,
+        });
+        return;
+      }
+      
+      // Si puede eliminarse, confirmar
+      if (window.confirm(`¿Está seguro de eliminar el proveedor "${statusData.proveedor.nombreprove}"?`)) {
         const response = await fetch(`${API_BASE_URL}/proveedor/${id}`, {
           method: 'DELETE',
         });
@@ -138,16 +183,27 @@ export default function Proveedores() {
             isClosable: true,
           });
           fetchProveedores();
+        } else {
+          // Manejar errores específicos de validación
+          const errorData = await response.json();
+          toast({
+            title: 'Error',
+            description: errorData.details || errorData.error || 'Hubo un error al eliminar el proveedor',
+            status: 'error',
+            duration: 5000,
+            isClosable: true,
+          });
         }
-      } catch (error) {
-        toast({
-          title: 'Error',
-          description: 'Hubo un error al eliminar el proveedor',
-          status: 'error',
-          duration: 3000,
-          isClosable: true,
-        });
       }
+    } catch (error) {
+      console.error('Error al verificar estado del proveedor:', error);
+      toast({
+        title: 'Error',
+        description: 'Hubo un error al verificar el estado del proveedor',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
     }
   };
 
@@ -159,6 +215,15 @@ export default function Proveedores() {
       localidad: ''
     });
     onOpen();
+  };
+
+  const handleProductosClick = (proveedor) => {
+    setSelectedProveedorForProductos(proveedor);
+    setIsProductosModalOpen(true);
+  };
+
+  const getProductosCount = (proveedor) => {
+    return proveedor.productos_count || 0;
   };
 
   return (
@@ -178,6 +243,7 @@ export default function Proveedores() {
               <Th>CUIT</Th>
               <Th>Localidad</Th>
               <Th>Fecha Alta</Th>
+              <Th>Productos</Th>
               <Th>Acciones</Th>
             </Tr>
           </Thead>
@@ -189,6 +255,11 @@ export default function Proveedores() {
                 <Td>{proveedor.localidad}</Td>
                 <Td>{new Date(proveedor.fechaaltaproveedor).toLocaleDateString()}</Td>
                 <Td>
+                  <Badge colorScheme="blue">
+                    {getProductosCount(proveedor)} productos
+                  </Badge>
+                </Td>
+                <Td>
                   <HStack spacing={2}>
                     <Button
                       size="sm"
@@ -196,6 +267,13 @@ export default function Proveedores() {
                       onClick={() => handleEdit(proveedor)}
                     >
                       Editar
+                    </Button>
+                    <Button
+                      size="sm"
+                      colorScheme="teal"
+                      onClick={() => handleProductosClick(proveedor)}
+                    >
+                      Productos
                     </Button>
                     <Button
                       size="sm"
@@ -222,6 +300,16 @@ export default function Proveedores() {
           <ModalCloseButton />
           <form onSubmit={handleSubmit}>
             <ModalBody>
+              {!selectedProveedor && (
+                <Alert status="info" mb={4}>
+                  <AlertIcon />
+                  <Text fontSize="sm">
+                    <strong>Importante:</strong> Después de crear el proveedor, deberás asignarle al menos un producto 
+                    para que pueda ser utilizado en el sistema.
+                  </Text>
+                </Alert>
+              )}
+              
               <FormControl isRequired mb={4}>
                 <FormLabel>Nombre</FormLabel>
                 <Input
@@ -236,16 +324,14 @@ export default function Proveedores() {
                   name="cuit"
                   value={formData.cuit}
                   onChange={handleInputChange}
-                  type="number"
                 />
               </FormControl>
-              <FormControl isRequired>
+              <FormControl isRequired mb={4}>
                 <FormLabel>Localidad</FormLabel>
                 <Input
                   name="localidad"
                   value={formData.localidad}
                   onChange={handleInputChange}
-                  type="number"
                 />
               </FormControl>
             </ModalBody>
@@ -260,6 +346,22 @@ export default function Proveedores() {
           </form>
         </ModalContent>
       </Modal>
+
+      {isProductosModalOpen && selectedProveedorForProductos && (
+        <Modal isOpen={isProductosModalOpen} onClose={() => setIsProductosModalOpen(false)} size="xl">
+          <ModalOverlay />
+          <ModalContent>
+            <ModalHeader>Productos de {selectedProveedorForProductos.nombreprove}</ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              <ProductosProveedor 
+                proveedorId={selectedProveedorForProductos.idproveedor}
+                nombreProveedor={selectedProveedorForProductos.nombreprove}
+              />
+            </ModalBody>
+          </ModalContent>
+        </Modal>
+      )}
     </Box>
   );
 } 
