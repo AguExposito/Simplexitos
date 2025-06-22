@@ -94,13 +94,16 @@ export const getInventarioById = async (req, res) => {
                 p.nombreproducto,
                 p.demanda,
                 p.costoalmacenamiento,
+                p.modeloproducto,
+                p.desviacionestandardemanda,
                 pp.preciounitario,
-                pp.costopedido
+                pp.costopedido,
+                pp.tiempoenvio
             FROM inventario i
             LEFT JOIN producto p ON i.idproducto = p.idproducto
             LEFT JOIN proveedor_producto pp ON i.idproducto = pp.idproducto
             WHERE i.idinventario = $1
-            ORDER BY pp.preciounitario ASC
+            AND pp.proveedor_predeterminado = TRUE
             LIMIT 1
         `, [id]);
         
@@ -110,12 +113,21 @@ export const getInventarioById = async (req, res) => {
 
         const item = result.rows[0];
         
+        // Calcular frecuencia de reabastecimiento para PERIODO_FIJO
+        if (item.modeloproducto === 'PERIODO_FIJO' && item.demanda && item.costopedido && item.costoalmacenamiento) {
+            const tiempoOptimo = Math.sqrt((2 * item.costopedido) / (item.demanda * item.costoalmacenamiento));
+            const frecuenciaReabastecimiento = 1 / tiempoOptimo;
+            item.frecuenciaReabastecimiento = frecuenciaReabastecimiento.toFixed(2);
+        } else {
+            item.frecuenciaReabastecimiento = '0.00';
+        }
+        
         // Calcular la frecuencia de pedidos histórica
         const frecuenciaHistorica = await calcularFrecuenciaPedidosHistorica(item.idproducto);
         item.frecuenciaHistorica = frecuenciaHistorica;
         
-        // Obtener las últimas órdenes de compra
-        const ultimasOrdenes = await obtenerUltimasOrdenes(item.idproducto, 5);
+        // Obtener las últimas órdenes de compra (más recientes primero)
+        const ultimasOrdenes = await obtenerUltimasOrdenes(item.idproducto, 10);
         item.ultimasOrdenes = ultimasOrdenes;
         
         // Calcular los costos si tenemos todos los datos necesarios
@@ -1012,7 +1024,7 @@ async function calcularFrecuenciaPedidosHistorica(idproducto) {
             FROM orden_compra oc
             JOIN inventario i ON oc.idinventario = i.idinventario
             WHERE i.idproducto = $1 
-            AND oc.estadoorden IN ('ENVIADA', 'PENDIENTE')
+            AND oc.estadoorden IN ('ENVIADA', 'PENDIENTE', 'FINALIZADA')
         `, [idproducto]);
 
         if (result.rows.length === 0 || result.rows[0].total_ordenes === 0) {
@@ -1065,7 +1077,7 @@ async function calcularFrecuenciaPedidosHistorica(idproducto) {
 }
 
 // Función para obtener las últimas órdenes de compra del producto
-async function obtenerUltimasOrdenes(idproducto, limite = 5) {
+async function obtenerUltimasOrdenes(idproducto, limite = 10) {
     try {
         const result = await pool.query(`
             SELECT 
@@ -1073,12 +1085,13 @@ async function obtenerUltimasOrdenes(idproducto, limite = 5) {
                 oc.fechaorden,
                 oc.cantidadsolicitada,
                 oc.estadoorden,
+                oc.descripcionordendecompra,
                 p.nombreprove
             FROM orden_compra oc
             JOIN inventario i ON oc.idinventario = i.idinventario
             JOIN proveedor p ON oc.idproveedor = p.idproveedor
             WHERE i.idproducto = $1
-            ORDER BY oc.fechaorden DESC
+            ORDER BY oc.fechaorden DESC, oc.idorden_compra DESC
             LIMIT $2
         `, [idproducto, limite]);
 
