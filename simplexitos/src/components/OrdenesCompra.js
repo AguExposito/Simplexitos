@@ -83,7 +83,7 @@ export default function OrdenesCompra() {
     }
   }, [formData.idproveedor, seleccionInicial]);
 
-  // Cargar proveedores por producto cuando se selecciona un producto
+  // Cargar proveedores cuando se selecciona un producto
   useEffect(() => {
     if (formData.idinventario && seleccionInicial === 'producto') {
       fetchProveedoresPorProducto(formData.idinventario);
@@ -100,10 +100,10 @@ export default function OrdenesCompra() {
 
   // Cargar sugerencias cuando se selecciona un proveedor
   useEffect(() => {
-    if (formData.idproveedor && seleccionInicial === 'proveedor') {
-      obtenerSugerenciasPorProveedor(formData.idproveedor);
+    if (formData.idproveedor && seleccionInicial === 'proveedor' && productosPorProveedor.length > 0) {
+      obtenerSugerenciasPorProveedor(formData.idproveedor, productosPorProveedor);
     }
-  }, [formData.idproveedor, seleccionInicial]);
+  }, [formData.idproveedor, seleccionInicial, productosPorProveedor]);
 
   const fetchOrdenes = async () => {
     try {
@@ -535,6 +535,133 @@ export default function OrdenesCompra() {
     }
   };
 
+  const handleEnviarOrden = async (id) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/orden-compra/${id}/recibir`, {
+        method: 'PUT',
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: 'Éxito',
+          description: 'Orden de compra enviada correctamente',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+        fetchOrdenes();
+      } else {
+        toast({
+          title: 'Error',
+          description: data.details || data.error || 'Error al enviar la orden de compra',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Error al enviar la orden de compra',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const handleCancelarOrden = async (id) => {
+    if (window.confirm('¿Está seguro de cancelar esta orden de compra?')) {
+      try {
+        const response = await fetch(`${API_BASE_URL}/orden-compra/${id}/cancelar`, {
+          method: 'PUT',
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          toast({
+            title: 'Éxito',
+            description: 'Orden de compra cancelada correctamente',
+            status: 'success',
+            duration: 3000,
+            isClosable: true,
+          });
+          fetchOrdenes();
+        } else {
+          toast({
+            title: 'Error',
+            description: data.details || data.error || 'Error al cancelar la orden de compra',
+            status: 'error',
+            duration: 5000,
+            isClosable: true,
+          });
+        }
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: 'Error al cancelar la orden de compra',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+    }
+  };
+
+  const handleFinalizarOrden = async (id) => {
+    if (window.confirm('¿Está seguro de finalizar esta orden de compra? Esto actualizará el inventario.')) {
+      try {
+        const response = await fetch(`${API_BASE_URL}/orden-compra/${id}/finalizar`, {
+          method: 'PUT',
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          toast({
+            title: 'Éxito',
+            description: 'Orden de compra finalizada correctamente',
+            status: 'success',
+            duration: 3000,
+            isClosable: true,
+          });
+          
+          // Mostrar advertencia si el stock no supera el punto de pedido
+          if (data.advertencia) {
+            toast({
+              title: 'Advertencia',
+              description: data.advertencia.mensaje,
+              status: 'warning',
+              duration: 8000,
+              isClosable: true,
+            });
+          }
+          
+          fetchOrdenes();
+        } else {
+          toast({
+            title: 'Error',
+            description: data.details || data.error || 'Error al finalizar la orden de compra',
+            status: 'error',
+            duration: 5000,
+            isClosable: true,
+          });
+        }
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: 'Error al finalizar la orden de compra',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+    }
+  };
+
   return (
     <Box maxW="7xl" mx="auto" pt={5} px={{ base: 2, sm: 12, md: 17 }}>
       <Container maxW="container.xl">
@@ -561,6 +688,7 @@ export default function OrdenesCompra() {
                 <Th>Estado</Th>
                 <Th>Fecha</Th>
                 <Th>Descripción</Th>
+                <Th>Acciones</Th>
               </Tr>
             </Thead>
             <Tbody>
@@ -573,6 +701,42 @@ export default function OrdenesCompra() {
                   <Td>{getEstadoBadge(orden.estadoorden)}</Td>
                   <Td>{new Date(orden.fechaorden).toLocaleDateString()}</Td>
                   <Td>{orden.descripcionordendecompra || 'N/A'}</Td>
+                  <Td>
+                    <HStack spacing={2}>
+                      {orden.estadoorden === 'PENDIENTE' && (
+                        <>
+                          <Button
+                            size="sm"
+                            colorScheme="blue"
+                            onClick={() => handleEnviarOrden(orden.idorden_compra)}
+                          >
+                            Enviar
+                          </Button>
+                          <Button
+                            size="sm"
+                            colorScheme="red"
+                            onClick={() => handleCancelarOrden(orden.idorden_compra)}
+                          >
+                            Cancelar
+                          </Button>
+                        </>
+                      )}
+                      {orden.estadoorden === 'ENVIADA' && (
+                        <Button
+                          size="sm"
+                          colorScheme="green"
+                          onClick={() => handleFinalizarOrden(orden.idorden_compra)}
+                        >
+                          Finalizar
+                        </Button>
+                      )}
+                      {(orden.estadoorden === 'FINALIZADA' || orden.estadoorden === 'CANCELADA') && (
+                        <Text fontSize="sm" color="gray.500">
+                          Sin acciones disponibles
+                        </Text>
+                      )}
+                    </HStack>
+                  </Td>
                 </Tr>
               ))}
             </Tbody>

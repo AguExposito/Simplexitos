@@ -57,7 +57,7 @@ export const createVenta = async (req, res) => {
 
     // Verificar el stock disponible y obtener el precio
     const stockResult = await client.query(`
-      SELECT i.stock, pp.preciounitario
+      SELECT i.stock, i.idinventario, pp.preciounitario
       FROM inventario i
       LEFT JOIN proveedor_producto pp ON i.idproducto = pp.idproducto
       WHERE i.idproducto = $1
@@ -74,7 +74,7 @@ export const createVenta = async (req, res) => {
       });
     }
 
-    const { stock, preciounitario } = stockResult.rows[0];
+    const { stock, preciounitario, idinventario } = stockResult.rows[0];
 
     if (!preciounitario) {
       await client.query('ROLLBACK');
@@ -116,9 +116,20 @@ export const createVenta = async (req, res) => {
 
     console.log('Stock actualizado:', updateResult.rows[0]);
 
+    const nuevoStock = updateResult.rows[0].stock;
+
+    // Verificar si se debe crear una orden automática
+    const ordenAutomatica = await verificarOrdenAutomatica(idinventario, nuevoStock);
+
     await client.query('COMMIT');
     
-    res.status(201).json(ventaResult.rows[0]);
+    // Preparar respuesta con información de la orden automática si se creó
+    const responseData = {
+      ...ventaResult.rows[0],
+      ordenAutomatica: ordenAutomatica
+    };
+    
+    res.status(201).json(responseData);
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error detallado al crear venta:', error);
@@ -193,4 +204,78 @@ export const deleteAllVentas = async (req, res) => {
       details: error.message 
     });
   }
-}; 
+};
+
+// Función para verificar y crear órdenes automáticas
+async function verificarOrdenAutomatica(idinventario, nuevoStock) {
+  try {
+    // Obtener información del inventario y producto
+    const inventarioCheck = await pool.query(`
+      SELECT 
+        i.*,
+        p.modeloproducto,
+        p.nombreproducto,
+        pp.idproveedor,
+        pp.preciounitario,
+        pr.nombreprove
+      FROM inventario i
+      JOIN producto p ON i.idproducto = p.idproducto
+      LEFT JOIN proveedor_producto pp ON i.idproducto = pp.idproducto
+      LEFT JOIN proveedor pr ON pp.idproveedor = pr.idproveedor
+      WHERE i.idinventario = $1
+      AND pp.proveedor_predeterminado = TRUE
+      LIMIT 1
+    `, [idinventario]);
+
+    if (inventarioCheck.rows.length === 0) {
+      return null; // No hay proveedor predeterminado
+    }
+
+    const inventario = inventarioCheck.rows[0];
+
+    // Solo crear orden automática para modelo LOTE_FIJO
+    if (inventario.modeloproducto !== 'LOTE_FIJO') {
+      return null;
+    }
+
+    // Verificar si el stock está en o por debajo del punto de pedido
+    if (nuevoStock > inventario.puntopedido) {
+      return null; // No es necesario crear orden
+    }
+
+    // Verificar si ya hay órdenes activas para este producto
+    const ordenesActivas = await pool.query(`
+      SELECT COUNT(*) as total
+      FROM orden_compra oc
+      WHERE oc.idinventario = $1 
+      AND oc.estadoorden IN ('PENDIENTE', 'ENVIADA')
+    `, [idinventario]);
+
+    if (parseInt(ordenesActivas.rows[0].total) > 0) {
+      return null; // Ya hay órdenes activas
+    }
+
+    // Crear la orden automática
+    const result = await pool.query(`
+      INSERT INTO orden_compra 
+      (idinventario, idproveedor, descripcionordendecompra, cantidadsolicitada, estadoorden) 
+      VALUES ($1, $2, $3, $4, 'PENDIENTE') 
+      RETURNING *
+    `, [
+      idinventario, 
+      inventario.idproveedor, 
+      `Orden automática - Stock bajo por venta (${nuevoStock}/${inventario.puntopedido})`,
+      inventario.loteoptimo
+    ]);
+
+    return {
+      orden: result.rows[0],
+      motivo: `Stock actual (${nuevoStock}) en o por debajo del punto de pedido (${inventario.puntopedido}) después de la venta`,
+      producto: inventario.nombreproducto,
+      proveedor: inventario.nombreprove
+    };
+  } catch (error) {
+    console.error('Error al verificar orden automática:', error);
+    return null;
+  }
+} 

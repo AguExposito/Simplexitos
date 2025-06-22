@@ -160,6 +160,8 @@ export default function Ventas() {
       });
 
       if (response.ok) {
+        const data = await response.json();
+        
         toast({
           title: 'Éxito',
           description: 'Venta registrada correctamente',
@@ -167,6 +169,18 @@ export default function Ventas() {
           duration: 3000,
           isClosable: true,
         });
+
+        // Mostrar notificación si se creó una orden automática
+        if (data.ordenAutomatica) {
+          toast({
+            title: 'Orden Automática Creada',
+            description: `${data.ordenAutomatica.motivo} - Producto: ${data.ordenAutomatica.producto} - Proveedor: ${data.ordenAutomatica.proveedor}`,
+            status: 'info',
+            duration: 8000,
+            isClosable: true,
+          });
+        }
+
         fetchVentas();
         fetchInventario(); // Actualizar el inventario
         onClose();

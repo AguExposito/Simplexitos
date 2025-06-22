@@ -395,6 +395,72 @@ export default function Inventario() {
     }
   };
 
+  const handleCrearOrdenAutomatica = async (item) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/orden-compra/automatica/${item.idinventario}`, {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: 'Orden Automática Creada',
+          description: data.motivo,
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+        });
+        // Recargar el inventario para reflejar los cambios
+        fetchInventario();
+      } else {
+        toast({
+          title: 'No se pudo crear la orden automática',
+          description: data.details || data.error,
+          status: 'warning',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+    } catch (error) {
+      console.error('Error al crear orden automática:', error);
+      toast({
+        title: 'Error',
+        description: 'Error al crear la orden automática',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  // Función para verificar si hay órdenes activas para un producto
+  const [ordenesActivas, setOrdenesActivas] = useState({});
+
+  const verificarOrdenesActivas = async (idinventario) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/orden-compra/activas/${idinventario}`);
+      if (response.ok) {
+        const data = await response.json();
+        setOrdenesActivas(prev => ({
+          ...prev,
+          [idinventario]: data.length
+        }));
+      }
+    } catch (error) {
+      console.error('Error verificando órdenes activas:', error);
+    }
+  };
+
+  // Verificar órdenes activas al cargar el inventario
+  useEffect(() => {
+    inventario.forEach(item => {
+      if (item.stock <= item.puntopedido && item.modeloproducto === 'LOTE_FIJO') {
+        verificarOrdenesActivas(item.idinventario);
+      }
+    });
+  }, [inventario]);
+
   // Componente del gráfico
   const CostChart = ({ data }) => {
     const totalCost = (data.costocompra || 0) + (data.costopedido || 0) + (data.costoalmacenamiento || 0);
@@ -700,6 +766,17 @@ export default function Inventario() {
                           >
                             Analizar
                           </Button>
+                          {item.stock <= item.puntopedido && item.modeloproducto === 'LOTE_FIJO' && 
+                           (!ordenesActivas[item.idinventario] || ordenesActivas[item.idinventario] === 0) && (
+                            <Button
+                              size="sm"
+                              colorScheme="orange"
+                              onClick={() => handleCrearOrdenAutomatica(item)}
+                              title="Crear orden automática - Stock bajo"
+                            >
+                              Orden Auto
+                            </Button>
+                          )}
                         </Td>
                       </Tr>
                     );
@@ -776,6 +853,17 @@ export default function Inventario() {
                           >
                             Analizar
                           </Button>
+                          {item.stock <= item.stockseguridad && item.modeloproducto === 'PERIODO_FIJO' && 
+                           (!ordenesActivas[item.idinventario] || ordenesActivas[item.idinventario] === 0) && (
+                            <Button
+                              size="sm"
+                              colorScheme="orange"
+                              onClick={() => handleCrearOrdenAutomatica(item)}
+                              title="Crear orden manual - Stock bajo"
+                            >
+                              Orden Manual
+                            </Button>
+                          )}
                         </Td>
                       </Tr>
                     );

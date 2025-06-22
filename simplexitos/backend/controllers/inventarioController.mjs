@@ -723,6 +723,10 @@ export const updateInventario = async (req, res) => {
             return res.status(404).json({ error: 'No se pudo actualizar el inventario' });
         }
 
+        // Verificar si se debe crear una orden automática
+        const nuevoStock = result.rows[0].stock;
+        const ordenAutomatica = await verificarOrdenAutomatica(id, nuevoStock);
+
         // Verificar si hay datos del proveedor para recalcular automáticamente
         const proveedorCheck = await client.query(`
           SELECT pp.*, p.demanda, p.costoalmacenamiento, p.desviacionestandardemanda
@@ -872,7 +876,12 @@ export const updateInventario = async (req, res) => {
             WHERE i.idinventario = $1
         `, [id]);
 
-        res.json(finalResult.rows[0]);
+        const responseData = {
+            ...finalResult.rows[0],
+            ordenAutomatica: ordenAutomatica
+        };
+
+        res.json(responseData);
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('Error al actualizar inventario:', error);
@@ -1095,9 +1104,29 @@ export const recalcularInventario = async (req, res) => {
                 pp.preciounitario,
                 pp.tiempoenvio
             FROM producto p
-            LEFT JOIN proveedor_producto pp ON p.idproducto = pp.idproducto
+            LEFT JOIN (
+                SELECT DISTINCT ON (idproducto) 
+                    idproducto, 
+                    costopedido,
+                    preciounitario,
+                    tiempoenvio
+                FROM proveedor_producto 
+                WHERE proveedor_predeterminado = TRUE
+                UNION ALL
+                SELECT DISTINCT ON (idproducto) 
+                    idproducto, 
+                    costopedido,
+                    preciounitario,
+                    tiempoenvio
+                FROM proveedor_producto pp1
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM proveedor_producto pp2 
+                    WHERE pp2.idproducto = pp1.idproducto 
+                    AND pp2.proveedor_predeterminado = TRUE
+                )
+                ORDER BY idproducto, preciounitario ASC
+            ) pp ON p.idproducto = pp.idproducto
             WHERE pp.idproducto IS NOT NULL
-            ORDER BY pp.preciounitario ASC
         `);
 
         let productosActualizados = 0;
@@ -1129,20 +1158,11 @@ export const recalcularInventario = async (req, res) => {
 
                     if (modeloproducto === 'LOTE_FIJO') {
                         // FÓRMULAS PARA MODELO LOTE_FIJO:
-                        
-                        // 1. Lote óptimo (EOQ): Q* = sqrt((2 * D * S) / H)
                         loteoptimo = Math.sqrt((2 * demanda * costopedido) / costoalmacenamiento);
-                        
-                        // 2. Demanda diaria promedio = demanda anual / 365 días
                         const demandaDiariaPromedio = demanda / 365;
-                        
-                        // 3. Stock de seguridad = 1.64 * sqrt(tiempo_envio) * desviacion_estandar
                         stockseguridadCalculado = 1.64 * Math.sqrt(tiempoenvio) * desviacionestandardemanda;
-                        
-                        // 4. Punto de pedido = demanda diaria promedio * tiempo envío + stock seguridad
                         puntopedidoCalculado = demandaDiariaPromedio * tiempoenvio + stockseguridadCalculado;
                         
-                        // 5. Costos
                         costos.costoCompra = demanda * preciounitario;
                         costos.costoPedido = (demanda / loteoptimo) * costopedido;
                         costos.costoAlmacenamiento = (loteoptimo / 2) * costoalmacenamiento;
@@ -1150,30 +1170,12 @@ export const recalcularInventario = async (req, res) => {
                         
                     } else if (modeloproducto === 'PERIODO_FIJO') {
                         // FÓRMULAS PARA MODELO PERIODO_FIJO:
-                        
-                        // 1. Tiempo óptimo entre pedidos: T* = sqrt((2 * S) / (D * H))
-                        // Donde: S = costo de pedido, D = demanda anual, H = costo de almacenamiento
                         const tiempoOptimo = Math.sqrt((2 * costopedido) / (demanda * costoalmacenamiento));
-                        
-                        // 2. Desviación estándar de la demanda durante el periodo de revisión y entrega
-                        // σ = sqrt(n * (tiempo óptimo + tiempo envío) * DE^2)
-                        // Donde: n = número de períodos, DE = desviación estándar de la demanda
                         const desviacionPeriodo = Math.sqrt((tiempoOptimo + tiempoenvio) * desviacionestandardemanda * desviacionestandardemanda);
-                        
-                        // 3. Stock de seguridad = 1.64 * desviación del período
-                        // Donde 1.64 corresponde a un nivel de servicio del 95%
                         stockseguridadCalculado = 1.64 * desviacionPeriodo;
-                        
-                        // 4. Lote óptimo = demanda * tiempo óptimo + stock seguridad
                         loteoptimo = demanda * tiempoOptimo + stockseguridadCalculado;
-                        
-                        // 5. Frecuencia de reabastecimiento = 1 / tiempo Optimo
-                        const frecuenciaReabastecimiento = 1 / tiempoOptimo;
-                        
-                        // 6. Punto de pedido = stock seguridad (en modelo período fijo se revisa periódicamente)
                         puntopedidoCalculado = stockseguridadCalculado;
                         
-                        // 7. Costos (mismas fórmulas que LOTE_FIJO)
                         costos.costoCompra = demanda * preciounitario;
                         costos.costoPedido = (demanda / loteoptimo) * costopedido;
                         costos.costoAlmacenamiento = (loteoptimo / 2) * costoalmacenamiento;
@@ -1229,3 +1231,77 @@ export const recalcularInventario = async (req, res) => {
         });
     }
 };
+
+// Función para verificar y crear órdenes automáticas
+async function verificarOrdenAutomatica(idinventario, nuevoStock) {
+  try {
+    // Obtener información del inventario y producto
+    const inventarioCheck = await pool.query(`
+      SELECT 
+        i.*,
+        p.modeloproducto,
+        p.nombreproducto,
+        pp.idproveedor,
+        pp.preciounitario,
+        pr.nombreprove
+      FROM inventario i
+      JOIN producto p ON i.idproducto = p.idproducto
+      LEFT JOIN proveedor_producto pp ON i.idproducto = pp.idproducto
+      LEFT JOIN proveedor pr ON pp.idproveedor = pr.idproveedor
+      WHERE i.idinventario = $1
+      AND pp.proveedor_predeterminado = TRUE
+      LIMIT 1
+    `, [idinventario]);
+
+    if (inventarioCheck.rows.length === 0) {
+      return null; // No hay proveedor predeterminado
+    }
+
+    const inventario = inventarioCheck.rows[0];
+
+    // Solo crear orden automática para modelo LOTE_FIJO
+    if (inventario.modeloproducto !== 'LOTE_FIJO') {
+      return null;
+    }
+
+    // Verificar si el stock está en o por debajo del punto de pedido
+    if (nuevoStock > inventario.puntopedido) {
+      return null; // No es necesario crear orden
+    }
+
+    // Verificar si ya hay órdenes activas para este producto
+    const ordenesActivas = await pool.query(`
+      SELECT COUNT(*) as total
+      FROM orden_compra oc
+      WHERE oc.idinventario = $1 
+      AND oc.estadoorden IN ('PENDIENTE', 'ENVIADA')
+    `, [idinventario]);
+
+    if (parseInt(ordenesActivas.rows[0].total) > 0) {
+      return null; // Ya hay órdenes activas
+    }
+
+    // Crear la orden automática
+    const result = await pool.query(`
+      INSERT INTO orden_compra 
+      (idinventario, idproveedor, descripcionordendecompra, cantidadsolicitada, estadoorden) 
+      VALUES ($1, $2, $3, $4, 'PENDIENTE') 
+      RETURNING *
+    `, [
+      idinventario, 
+      inventario.idproveedor, 
+      `Orden automática - Stock bajo (${nuevoStock}/${inventario.puntopedido})`,
+      inventario.loteoptimo
+    ]);
+
+    return {
+      orden: result.rows[0],
+      motivo: `Stock actual (${nuevoStock}) en o por debajo del punto de pedido (${inventario.puntopedido})`,
+      producto: inventario.nombreproducto,
+      proveedor: inventario.nombreprove
+    };
+  } catch (error) {
+    console.error('Error al verificar orden automática:', error);
+    return null;
+  }
+}

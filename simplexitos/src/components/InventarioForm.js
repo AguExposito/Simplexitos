@@ -109,11 +109,12 @@ export default function InventarioForm({ isOpen, onClose, inventarioId, productI
         body: JSON.stringify(numericFormData),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.details || data.error || `Error: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.details || errorData.error || `Error: ${response.status}`);
       }
+
+      const data = await response.json();
 
       toast({
         title: 'Éxito',
@@ -122,6 +123,17 @@ export default function InventarioForm({ isOpen, onClose, inventarioId, productI
         duration: 5000,
         isClosable: true,
       });
+
+      // Mostrar notificación si se creó una orden automática
+      if (data.ordenAutomatica) {
+        toast({
+          title: 'Orden Automática Creada',
+          description: `${data.ordenAutomatica.motivo} - Producto: ${data.ordenAutomatica.producto} - Proveedor: ${data.ordenAutomatica.proveedor}`,
+          status: 'info',
+          duration: 8000,
+          isClosable: true,
+        });
+      }
       
       if (onInventarioUpdated) {
         onInventarioUpdated();
