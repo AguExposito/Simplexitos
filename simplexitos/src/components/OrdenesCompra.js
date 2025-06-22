@@ -228,9 +228,34 @@ export default function OrdenesCompra() {
       if (response.ok) {
         const data = await response.json();
         setOrdenesActivas(data);
+        
+        // Mostrar notificación si hay órdenes activas
+        if (data.length > 0) {
+          const ordenesPendientes = data.filter(o => o.estadoorden === 'PENDIENTE').length;
+          const ordenesEnviadas = data.filter(o => o.estadoorden === 'ENVIADA').length;
+          
+          let descripcion = `Este producto tiene ${data.length} orden(es) activa(s): `;
+          if (ordenesPendientes > 0) {
+            descripcion += `${ordenesPendientes} pendiente(s)`;
+          }
+          if (ordenesEnviadas > 0) {
+            if (ordenesPendientes > 0) descripcion += ', ';
+            descripcion += `${ordenesEnviadas} enviada(s)`;
+          }
+          descripcion += '. Se le pedirá confirmación antes de crear una nueva orden.';
+          
+          toast({
+            title: 'Órdenes Activas Detectadas',
+            description: descripcion,
+            status: 'warning',
+            duration: 6000,
+            isClosable: true,
+          });
+        }
       }
     } catch (error) {
       console.error('Error verificando órdenes activas:', error);
+      // No mostrar error al usuario ya que es una verificación automática
     }
   };
 
@@ -317,8 +342,10 @@ export default function OrdenesCompra() {
     // Limpiar la selección dependiente cuando cambia la selección inicial
     if (name === 'idproveedor' && seleccionInicial === 'proveedor') {
       setFormData(prev => ({ ...prev, idinventario: '' }));
+      setOrdenesActivas([]); // Limpiar órdenes activas al cambiar proveedor
     } else if (name === 'idinventario' && seleccionInicial === 'producto') {
       setFormData(prev => ({ ...prev, idproveedor: '' }));
+      setOrdenesActivas([]); // Limpiar órdenes activas al cambiar producto
     }
 
     // Si se selecciona un producto y es predeterminado, sugerir el lote óptimo
@@ -332,7 +359,15 @@ export default function OrdenesCompra() {
             cantidadsolicitada: inventarioItem.loteoptimo
           }));
         }
+        
+        // Verificar órdenes activas cuando se selecciona un producto en el flujo "Proveedor Primero"
+        verificarOrdenesActivas(value);
       }
+    }
+    
+    // Verificar órdenes activas también para el flujo "Producto Primero"
+    if (name === 'idinventario' && seleccionInicial === 'producto' && value) {
+      verificarOrdenesActivas(value);
     }
   };
 
@@ -346,7 +381,7 @@ export default function OrdenesCompra() {
     }));
     setProductosPorProveedor([]);
     setProveedoresPorProducto([]);
-    setOrdenesActivas([]);
+    setOrdenesActivas([]); // Limpiar órdenes activas al cambiar tipo de selección
     setSugerencias({
       proveedorPredeterminado: null,
       loteOptimo: 0,
@@ -462,8 +497,9 @@ export default function OrdenesCompra() {
 
   const getEstadoBadge = (estado) => {
     const estados = {
-      'ABIERTA': { color: 'yellow', text: 'Abierta' },
-      'RECIBIDA': { color: 'green', text: 'Recibida' },
+      'PENDIENTE': { color: 'yellow', text: 'Pendiente' },
+      'ENVIADA': { color: 'blue', text: 'Enviada' },
+      'FINALIZADA': { color: 'green', text: 'Finalizada' },
       'CANCELADA': { color: 'red', text: 'Cancelada' }
     };
     const estadoInfo = estados[estado] || { color: 'gray', text: estado };
@@ -782,7 +818,7 @@ export default function OrdenesCompra() {
                             <Box key={index} p={2} bg="yellow.50" borderRadius="md" w="100%">
                               <Text fontSize="sm">
                                 <strong>Orden #{orden.idorden_compra}</strong> - {orden.cantidadsolicitada} unidades 
-                                <Badge ml={2} colorScheme={orden.estadoorden === 'RECIBIDA' ? 'green' : 'yellow'}>
+                                <Badge ml={2} colorScheme={orden.estadoorden === 'ENVIADA' ? 'green' : 'yellow'}>
                                   {orden.estadoorden}
                                 </Badge>
                               </Text>

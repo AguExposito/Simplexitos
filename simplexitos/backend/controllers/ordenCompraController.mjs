@@ -118,7 +118,7 @@ export const recibirOrdenCompra = async (req, res) => {
   const { id } = req.params;
 
   try {
-    // Verificar que la orden existe y está en estado ABIERTA
+    // Verificar que la orden existe y está en estado PENDIENTE
     const ordenCheck = await pool.query(
       'SELECT * FROM orden_compra WHERE idorden_compra = $1',
       [id]
@@ -128,14 +128,14 @@ export const recibirOrdenCompra = async (req, res) => {
       return res.status(404).json({ error: 'Orden de compra no encontrada' });
     }
 
-    if (ordenCheck.rows[0].estadoorden !== 'ABIERTA') {
-      return res.status(400).json({ error: 'La orden de compra no está en estado ABIERTA' });
+    if (ordenCheck.rows[0].estadoorden !== 'PENDIENTE') {
+      return res.status(400).json({ error: 'La orden de compra no está en estado PENDIENTE' });
     }
 
     // Actualizar el estado de la orden
     const result = await pool.query(
       `UPDATE orden_compra 
-       SET estadoorden = 'RECIBIDA'
+       SET estadoorden = 'ENVIADA'
        WHERE idorden_compra = $1
        RETURNING *`,
       [id]
@@ -151,12 +151,12 @@ export const recibirOrdenCompra = async (req, res) => {
     );
 
     res.json({
-      message: 'Orden de compra recibida correctamente',
+      message: 'Orden de compra enviada correctamente',
       data: orden
     });
   } catch (error) {
-    console.error('Error al recibir orden de compra:', error);
-    res.status(500).json({ error: 'Error al recibir orden de compra' });
+    console.error('Error al enviar orden de compra:', error);
+    res.status(500).json({ error: 'Error al enviar orden de compra' });
   }
 };
 
@@ -227,7 +227,7 @@ export const getOrdenesActivas = async (req, res) => {
       JOIN inventario i ON oc.idinventario = i.idinventario
       JOIN proveedor p ON oc.idproveedor = p.idproveedor
       WHERE oc.idinventario = $1 
-      AND oc.estadoorden IN ('ABIERTA', 'RECIBIDA')
+      AND oc.estadoorden IN ('PENDIENTE', 'ENVIADA')
       ORDER BY oc.fechaorden DESC
     `, [idinventario]);
     

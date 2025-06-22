@@ -1003,7 +1003,7 @@ async function calcularFrecuenciaPedidosHistorica(idproducto) {
             FROM orden_compra oc
             JOIN inventario i ON oc.idinventario = i.idinventario
             WHERE i.idproducto = $1 
-            AND oc.estadoorden IN ('RECIBIDA', 'ABIERTA')
+            AND oc.estadoorden IN ('ENVIADA', 'PENDIENTE')
         `, [idproducto]);
 
         if (result.rows.length === 0 || result.rows[0].total_ordenes === 0) {

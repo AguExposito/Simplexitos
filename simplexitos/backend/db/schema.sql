@@ -1,5 +1,5 @@
 CREATE TYPE estado_comun AS ENUM ('ACTIVO','INACTIVO');
-CREATE TYPE estado_oc    AS ENUM ('ABIERTA','RECIBIDA','CANCELADA');
+CREATE TYPE estado_oc    AS ENUM ('PENDIENTE','ENVIADA','FINALIZADA','CANCELADA');
 CREATE TYPE tipo_modelo  AS ENUM ('LOTE_FIJO','PERIODO_FIJO');
 
 CREATE TABLE proveedor (
@@ -51,7 +51,7 @@ CREATE TABLE inventario (
     stockseguridad                  INT NOT NULL,
     loteoptimo                      INT NOT NULL,
     modeloinventario                tipo_modelo DEFAULT 'LOTE_FIJO',
-    cgi                             DOUBLE PRECISION,
+    cgi                             DOUBLE PRECISION
     --frecuenciadereabastecimiento    INT
 );
 
@@ -68,7 +68,7 @@ CREATE TABLE orden_compra (
     idinventario                    INT NOT NULL REFERENCES inventario(idinventario),
     idproveedor                     INT NOT NULL REFERENCES proveedor(idproveedor),
     descripcionordendecompra        VARCHAR(255),
-    estadoorden                     estado_oc DEFAULT 'ABIERTA',
+    estadoorden                     estado_oc DEFAULT 'PENDIENTE',
     cantidadsolicitada              INT NOT NULL,
     fechaorden                      DATE DEFAULT CURRENT_DATE
 );

@@ -130,16 +130,20 @@ export const checkProveedorStatus = async (req, res) => {
       WHERE pp.idproveedor = $1
     `, [id]);
     
-    // Verificar órdenes de compra
+    // 2. Verificar si hay órdenes de compra pendientes o enviadas
     const ordenesResult = await pool.query(`
-      SELECT oc.estadoorden, oc.idorden_compra, oc.cantidadsolicitada, oc.fechaorden
+      SELECT oc.estadoorden, oc.idorden_compra, p.nombreproducto
       FROM orden_compra oc
-      WHERE oc.idproveedor = $1 AND oc.estadoorden IN ('ABIERTA', 'RECIBIDA')
-      ORDER BY oc.fechaorden DESC
+      JOIN inventario i ON oc.idinventario = i.idinventario
+      JOIN producto p ON i.idproducto = p.idproducto
+      WHERE oc.idproveedor = $1 AND oc.estadoorden IN ('PENDIENTE', 'ENVIADA')
     `, [id]);
     
-    const ordenesPendientes = ordenesResult.rows.filter(o => o.estadoorden === 'ABIERTA');
-    const ordenesEnviadas = ordenesResult.rows.filter(o => o.estadoorden === 'RECIBIDA');
+    if (ordenesResult.rows.length > 0) {
+      await pool.query('ROLLBACK');
+      const ordenesPendientes = ordenesResult.rows.filter(o => o.estadoorden === 'PENDIENTE');
+      const ordenesEnviadas = ordenesResult.rows.filter(o => o.estadoorden === 'ENVIADA');
+    }
     
     const canDelete = productosResult.rows.length === 0 && ordenesResult.rows.length === 0;
     

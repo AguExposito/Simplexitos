@@ -29,8 +29,8 @@ const ordenCompra = db.define('orden_compra', {
         type: DataTypes.STRING(255)
     },
     estadoorden: {
-        type: DataTypes.ENUM('ABIERTA', 'RECIBIDA', 'CANCELADA'),
-        defaultValue: 'ABIERTA'
+        type: DataTypes.ENUM('PENDIENTE', 'ENVIADA', 'FINALIZADA', 'CANCELADA'),
+        defaultValue: 'PENDIENTE'
     },
     cantidadsolicitada: {
         type: DataTypes.INTEGER,

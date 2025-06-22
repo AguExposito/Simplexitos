@@ -865,8 +865,8 @@ export default function Inventario() {
                                 </Text>
                                 <Badge 
                                   colorScheme={
-                                    orden.estadoorden === 'RECIBIDA' ? 'green' : 
-                                    orden.estadoorden === 'ABIERTA' ? 'yellow' : 'red'
+                                    orden.estadoorden === 'ENVIADA' ? 'green' : 
+                                    orden.estadoorden === 'PENDIENTE' ? 'yellow' : 'red'
                                   }
                                   size="sm"
                                 >

@@ -302,13 +302,13 @@ export const deleteProducto = async (req, res) => {
       FROM orden_compra oc
       JOIN inventario i ON oc.idinventario = i.idinventario
       JOIN producto p ON i.idproducto = p.idproducto
-      WHERE i.idproducto = $1 AND oc.estadoorden IN ('ABIERTA', 'RECIBIDA')
+      WHERE i.idproducto = $1 AND oc.estadoorden IN ('PENDIENTE', 'ENVIADA')
     `, [id]);
     
     if (ordenesResult.rows.length > 0) {
       await pool.query('ROLLBACK');
-      const ordenesPendientes = ordenesResult.rows.filter(o => o.estadoorden === 'ABIERTA');
-      const ordenesEnviadas = ordenesResult.rows.filter(o => o.estadoorden === 'RECIBIDA');
+      const ordenesPendientes = ordenesResult.rows.filter(o => o.estadoorden === 'PENDIENTE');
+      const ordenesEnviadas = ordenesResult.rows.filter(o => o.estadoorden === 'ENVIADA');
       
       let details = 'El producto tiene órdenes de compra activas:';
       if (ordenesPendientes.length > 0) {
@@ -404,12 +404,12 @@ export const checkProductoStatus = async (req, res) => {
       SELECT oc.estadoorden, oc.idorden_compra, oc.cantidadsolicitada, oc.fechaorden
       FROM orden_compra oc
       JOIN inventario i ON oc.idinventario = i.idinventario
-      WHERE i.idproducto = $1 AND oc.estadoorden IN ('ABIERTA', 'RECIBIDA')
+      WHERE i.idproducto = $1 AND oc.estadoorden IN ('PENDIENTE', 'ENVIADA')
       ORDER BY oc.fechaorden DESC
     `, [id]);
     
-    const ordenesPendientes = ordenesResult.rows.filter(o => o.estadoorden === 'ABIERTA');
-    const ordenesEnviadas = ordenesResult.rows.filter(o => o.estadoorden === 'RECIBIDA');
+    const ordenesPendientes = ordenesResult.rows.filter(o => o.estadoorden === 'PENDIENTE');
+    const ordenesEnviadas = ordenesResult.rows.filter(o => o.estadoorden === 'ENVIADA');
     
     const canDelete = stock === 0 && ordenesResult.rows.length === 0;
     
