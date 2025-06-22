@@ -159,13 +159,24 @@ export default function Inventario() {
     }
   };
 
-  const getStockStatus = (stock, stockSeguridad, puntoPedido) => {
+  const getStockStatus = (stock, stockSeguridad, puntoPedido, modeloproducto) => {
     if (stock <= stockSeguridad) {
       return { color: 'red', text: 'Bajo' };
-    } else if (stock <= puntoPedido) {
-      return { color: 'yellow', text: 'Medio' };
+    } else if (modeloproducto === 'PERIODO_FIJO') {
+      // Para PERIODO_FIJO: estado medio entre stock de seguridad y lote óptimo
+      // El punto de pedido en PERIODO_FIJO es igual al stock de seguridad
+      if (stock <= stockSeguridad * 2) {
+        return { color: 'yellow', text: 'Medio' };
+      } else {
+        return { color: 'green', text: 'Óptimo' };
+      }
     } else {
-      return { color: 'green', text: 'Óptimo' };
+      // Para LOTE_FIJO: estado medio entre stock de seguridad y punto de pedido
+      if (stock <= puntoPedido) {
+        return { color: 'yellow', text: 'Medio' };
+      } else {
+        return { color: 'green', text: 'Óptimo' };
+      }
     }
   };
 
@@ -184,15 +195,26 @@ export default function Inventario() {
     // Filtro por stock
     if (filtroStock !== 'TODOS') {
       inventarioFiltrado = inventarioFiltrado.filter(item => {
+        const producto = productos.find(p => p.idproducto === item.idproducto);
+        const modeloproducto = producto?.modeloproducto || 'LOTE_FIJO';
+        
         switch (filtroStock) {
           case 'SIN_STOCK':
             return item.stock === 0;
           case 'STOCK_BAJO':
-            return item.stock > 0 && item.stock < item.stockseguridad;
+            return item.stock > 0 && item.stock <= item.stockseguridad;
           case 'STOCK_MEDIO':
-            return item.stock >= item.stockseguridad && item.stock <= item.puntopedido;
+            if (modeloproducto === 'PERIODO_FIJO') {
+              return item.stock > item.stockseguridad && item.stock <= item.stockseguridad * 2;
+            } else {
+              return item.stock > item.stockseguridad && item.stock <= item.puntopedido;
+            }
           case 'STOCK_ALTO':
-            return item.stock > item.puntopedido;
+            if (modeloproducto === 'PERIODO_FIJO') {
+              return item.stock > item.stockseguridad * 2;
+            } else {
+              return item.stock > item.puntopedido;
+            }
           default:
             return true;
         }
@@ -200,6 +222,59 @@ export default function Inventario() {
     }
     
     return inventarioFiltrado;
+  };
+
+  // Función para separar inventario por modelo
+  const getInventarioPorModelo = () => {
+    const inventarioFiltrado = getInventarioFiltrado();
+    const loteFijo = [];
+    const periodoFijo = [];
+
+    inventarioFiltrado.forEach(item => {
+      const producto = productos.find(p => p.idproducto === item.idproducto);
+      if (producto && producto.modeloproducto === 'PERIODO_FIJO') {
+        periodoFijo.push(item);
+      } else {
+        loteFijo.push(item);
+      }
+    });
+
+    return { loteFijo, periodoFijo };
+  };
+
+  // Función para calcular estadísticas de stock
+  const getEstadisticasStock = () => {
+    const inventarioFiltrado = getInventarioFiltrado();
+    let stockInsuficiente = 0;
+    let stockSuficiente = 0;
+
+    inventarioFiltrado.forEach(item => {
+      const status = getStockStatus(item.stock, item.stockseguridad, item.puntopedido, item.modeloproducto);
+      if (status.text === 'Bajo') {
+        stockInsuficiente++;
+      } else {
+        stockSuficiente++;
+      }
+    });
+
+    return { stockInsuficiente, stockSuficiente };
+  };
+
+  // Función para calcular el valor total del inventario
+  const calcularValorTotal = () => {
+    const inventarioFiltrado = getInventarioFiltrado();
+    let valorTotal = 0;
+
+    inventarioFiltrado.forEach(item => {
+      const producto = productos.find(p => p.idproducto === item.idproducto);
+      if (producto && item.stock > 0) {
+        // Buscar el precio unitario del proveedor más barato
+        const precioUnitario = item.preciounitario || 0;
+        valorTotal += item.stock * precioUnitario;
+      }
+    });
+
+    return valorTotal;
   };
 
   const handleFiltroChange = (nuevoFiltro) => {
@@ -211,29 +286,72 @@ export default function Inventario() {
   };
 
   const handleExportar = () => {
-    const inventarioFiltrado = getInventarioFiltrado();
-    const datosExportar = inventarioFiltrado.map(item => {
+    const { loteFijo, periodoFijo } = getInventarioPorModelo();
+    
+    // Crear datos para exportar con campos diferenciados por modelo
+    const datosExportar = [];
+    
+    // Agregar productos LOTE_FIJO
+    loteFijo.forEach(item => {
       const producto = productos.find(p => p.idproducto === item.idproducto);
-      const status = getStockStatus(item.stock, item.stockseguridad, item.puntopedido);
+      const status = getStockStatus(item.stock, item.stockseguridad, item.puntopedido, item.modeloproducto);
       
-      return {
+      datosExportar.push({
         ID: item.idinventario,
         Producto: producto?.nombreproducto || 'N/A',
+        Modelo: 'LOTE_FIJO',
         Estado_Producto: producto?.estadoproducto || 'N/A',
         Stock: item.stock,
         Estado_Stock: status.text,
         Punto_Pedido: item.puntopedido,
+        Frecuencia_Reabastecimiento: '0.00', // No aplica para LOTE_FIJO
         Stock_Seguridad: item.stockseguridad,
         Lote_Optimo: item.loteoptimo,
         Costo_Compra: item.costocompra || 0,
         Costo_Pedido: item.costopedido || 0,
         Costo_Almacenamiento: item.costoalmacenamiento || 0,
         CGI: item.cgi || 0
-      };
+      });
+    });
+    
+    // Agregar productos PERIODO_FIJO
+    periodoFijo.forEach(item => {
+      const producto = productos.find(p => p.idproducto === item.idproducto);
+      const status = getStockStatus(item.stock, item.stockseguridad, item.puntopedido, item.modeloproducto);
+      // Usar la frecuencia de reabastecimiento calculada por el backend
+      const frecuenciaReabastecimiento = item.frecuenciaReabastecimiento || '0.00';
+      
+      datosExportar.push({
+        ID: item.idinventario,
+        Producto: producto?.nombreproducto || 'N/A',
+        Modelo: 'PERIODO_FIJO',
+        Estado_Producto: producto?.estadoproducto || 'N/A',
+        Stock: item.stock,
+        Estado_Stock: status.text,
+        Punto_Pedido: '0', // No aplica para PERIODO_FIJO
+        Frecuencia_Reabastecimiento: frecuenciaReabastecimiento,
+        Stock_Seguridad: item.stockseguridad,
+        Lote_Optimo: item.loteoptimo,
+        Costo_Compra: item.costocompra || 0,
+        Costo_Pedido: item.costopedido || 0,
+        Costo_Almacenamiento: item.costoalmacenamiento || 0,
+        CGI: item.cgi || 0
+      });
     });
 
+    if (datosExportar.length === 0) {
+      toast({
+        title: 'No hay datos',
+        description: 'No hay productos para exportar con los filtros aplicados',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
     const csvContent = [
-      Object.keys(datosExportar[0] || {}).join(','),
+      Object.keys(datosExportar[0]).join(','),
       ...datosExportar.map(row => Object.values(row).join(','))
     ].join('\n');
 
@@ -470,115 +588,202 @@ export default function Inventario() {
           </HStack>
         </Box>
         
-        <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={{ base: 5, lg: 8 }} mb={8}>
+        <SimpleGrid columns={{ base: 1, md: 2, lg: 3, xl: 6 }} spacing={{ base: 5, lg: 8 }} mb={8}>
           <Stat>
             <StatLabel>Total Productos</StatLabel>
             <StatNumber>{getInventarioFiltrado().length}</StatNumber>
           </Stat>
           <Stat>
-            <StatLabel>Stock Bajo</StatLabel>
-            <StatNumber>
-              {getInventarioFiltrado().filter(item => item.stock < item.stockseguridad).length}
-            </StatNumber>
+            <StatLabel>Stock Insuficiente</StatLabel>
+            <StatNumber color="red.500">{getEstadisticasStock().stockInsuficiente}</StatNumber>
             <StatHelpText>
               <StatArrow type="decrease" />
-              Necesitan reabastecimiento
+              Stock bajo
             </StatHelpText>
           </Stat>
           <Stat>
-            <StatLabel>Stock Alto</StatLabel>
-            <StatNumber>
-              {getInventarioFiltrado().filter(item => item.stock > item.puntopedido).length}
-            </StatNumber>
+            <StatLabel>Stock Suficiente</StatLabel>
+            <StatNumber color="green.500">{getEstadisticasStock().stockSuficiente}</StatNumber>
             <StatHelpText>
               <StatArrow type="increase" />
-              Stock suficiente
+              Stock óptimo/alto
+            </StatHelpText>
+          </Stat>
+          <Stat>
+            <StatLabel>Lote Fijo</StatLabel>
+            <StatNumber>{getInventarioPorModelo().loteFijo.length}</StatNumber>
+            <StatHelpText>
+              <StatArrow type="decrease" />
+              Cantidad fija
+            </StatHelpText>
+          </Stat>
+          <Stat>
+            <StatLabel>Período Fijo</StatLabel>
+            <StatNumber>{getInventarioPorModelo().periodoFijo.length}</StatNumber>
+            <StatHelpText>
+              <StatArrow type="increase" />
+              Tiempo fijo
             </StatHelpText>
           </Stat>
           <Stat>
             <StatLabel>Valor Total</StatLabel>
             <StatNumber>${valorTotal.valor_total.toFixed(2)}</StatNumber>
+            <StatHelpText>
+              Valor del inventario
+            </StatHelpText>
           </Stat>
         </SimpleGrid>
 
         <Box overflowX="auto">
-          <Table variant="simple">
-            <Thead>
-              <Tr>
-                <Th>ID</Th>
-                <Th>Producto</Th>
-                <Th>Estado Producto</Th>
-                <Th>Stock</Th>
-                <Th>Estado</Th>
-                <Th>Punto de Pedido*</Th>
-                <Th>Stock Seguridad*</Th>
-                <Th>Acciones</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {getInventarioFiltrado().length === 0 ? (
+          {/* Tabla para LOTE_FIJO */}
+          <Box mb={8}>
+            <Heading size="md" mb={4} color="blue.600">
+              Modelo Lote Fijo (EOQ) - {getInventarioPorModelo().loteFijo.length} productos
+            </Heading>
+            <Table variant="simple">
+              <Thead>
                 <Tr>
-                  <Td colSpan={8} textAlign="center" py={8}>
-                    <Text color="gray.500">
-                      {filtroEstado === 'TODOS' && filtroStock === 'TODOS'
-                        ? 'No hay productos en el inventario' 
-                        : `No hay productos que coincidan con los filtros aplicados${
-                            filtroEstado !== 'TODOS' ? ` (Estado: ${filtroEstado})` : ''
-                          }${
-                            filtroStock !== 'TODOS' ? ` (Stock: ${
-                              filtroStock === 'SIN_STOCK' ? 'Sin stock' :
-                              filtroStock === 'STOCK_BAJO' ? 'Stock bajo' :
-                              filtroStock === 'STOCK_MEDIO' ? 'Stock medio' :
-                              filtroStock === 'STOCK_ALTO' ? 'Stock alto' : ''
-                            })` : ''
-                          }`
-                      }
-                    </Text>
-                  </Td>
+                  <Th>ID</Th>
+                  <Th>Producto</Th>
+                  <Th>Estado Producto</Th>
+                  <Th>Stock</Th>
+                  <Th>Estado</Th>
+                  <Th>Punto de Pedido</Th>
+                  <Th>Stock Seguridad</Th>
+                  <Th>Lote Óptimo</Th>
+                  <Th>Acciones</Th>
                 </Tr>
-              ) : (
-                getInventarioFiltrado().map((item) => {
-                const status = getStockStatus(item.stock, item.stockseguridad, item.puntopedido);
-                const producto = productos.find(p => p.idproducto === item.idproducto);
-                return (
-                  <Tr key={item.idinventario}>
-                    <Td>{item.idinventario}</Td>
-                    <Td>{producto?.nombreproducto || 'N/A'}</Td>
-                      <Td>
-                        <Badge 
-                          colorScheme={producto?.estadoproducto === 'ACTIVO' ? 'green' : 'red'}
-                        >
-                          {producto?.estadoproducto || 'N/A'}
-                        </Badge>
-                      </Td>
-                    <Td>{item.stock}</Td>
-                    <Td>
-                      <Badge colorScheme={status.color}>{status.text}</Badge>
-                    </Td>
-                    <Td>{item.puntopedido}</Td>
-                    <Td>{item.stockseguridad}</Td>
-                    <Td>
-                      <Button
-                        size="sm"
-                        leftIcon={<EditIcon />}
-                        onClick={() => handleEdit(item)}
-                      >
-                        Editar
-                      </Button>
-                      <Button
-                        size="sm"
-                        leftIcon={<EditIcon />}
-                        onClick={() => handleAnalizarProducto(item)}
-                      >
-                        Analizar
-                      </Button>
+              </Thead>
+              <Tbody>
+                {getInventarioPorModelo().loteFijo.length === 0 ? (
+                  <Tr>
+                    <Td colSpan={9} textAlign="center" py={8}>
+                      <Text color="gray.500">
+                        No hay productos con modelo Lote Fijo que coincidan con los filtros aplicados
+                      </Text>
                     </Td>
                   </Tr>
-                );
-                })
-              )}
-            </Tbody>
-          </Table>
+                ) : (
+                  getInventarioPorModelo().loteFijo.map((item) => {
+                    const status = getStockStatus(item.stock, item.stockseguridad, item.puntopedido, item.modeloproducto);
+                    const producto = productos.find(p => p.idproducto === item.idproducto);
+                    return (
+                      <Tr key={item.idinventario}>
+                        <Td>{item.idinventario}</Td>
+                        <Td>{producto?.nombreproducto || 'N/A'}</Td>
+                        <Td>
+                          <Badge 
+                            colorScheme={producto?.estadoproducto === 'ACTIVO' ? 'green' : 'red'}
+                          >
+                            {producto?.estadoproducto || 'N/A'}
+                          </Badge>
+                        </Td>
+                        <Td>{item.stock}</Td>
+                        <Td>
+                          <Badge colorScheme={status.color}>{status.text}</Badge>
+                        </Td>
+                        <Td>{item.puntopedido}</Td>
+                        <Td>{item.stockseguridad}</Td>
+                        <Td>{item.loteoptimo}</Td>
+                        <Td>
+                          <Button
+                            size="sm"
+                            leftIcon={<EditIcon />}
+                            onClick={() => handleEdit(item)}
+                          >
+                            Editar
+                          </Button>
+                          <Button
+                            size="sm"
+                            leftIcon={<EditIcon />}
+                            onClick={() => handleAnalizarProducto(item)}
+                          >
+                            Analizar
+                          </Button>
+                        </Td>
+                      </Tr>
+                    );
+                  })
+                )}
+              </Tbody>
+            </Table>
+          </Box>
+
+          {/* Tabla para PERIODO_FIJO */}
+          <Box>
+            <Heading size="md" mb={4} color="green.600">
+              Modelo Período Fijo - {getInventarioPorModelo().periodoFijo.length} productos
+            </Heading>
+            <Table variant="simple">
+              <Thead>
+                <Tr>
+                  <Th>ID</Th>
+                  <Th>Producto</Th>
+                  <Th>Estado Producto</Th>
+                  <Th>Stock</Th>
+                  <Th>Estado</Th>
+                  <Th>Frecuencia Reabastecimiento</Th>
+                  <Th>Stock Seguridad</Th>
+                  <Th>Lote Óptimo</Th>
+                  <Th>Acciones</Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                {getInventarioPorModelo().periodoFijo.length === 0 ? (
+                  <Tr>
+                    <Td colSpan={9} textAlign="center" py={8}>
+                      <Text color="gray.500">
+                        No hay productos con modelo Período Fijo que coincidan con los filtros aplicados
+                      </Text>
+                    </Td>
+                  </Tr>
+                ) : (
+                  getInventarioPorModelo().periodoFijo.map((item) => {
+                    const status = getStockStatus(item.stock, item.stockseguridad, item.puntopedido, item.modeloproducto);
+                    const producto = productos.find(p => p.idproducto === item.idproducto);
+                    // Usar la frecuencia de reabastecimiento calculada por el backend
+                    const frecuenciaReabastecimiento = item.frecuenciaReabastecimiento || '0.00';
+                    return (
+                      <Tr key={item.idinventario}>
+                        <Td>{item.idinventario}</Td>
+                        <Td>{producto?.nombreproducto || 'N/A'}</Td>
+                        <Td>
+                          <Badge 
+                            colorScheme={producto?.estadoproducto === 'ACTIVO' ? 'green' : 'red'}
+                          >
+                            {producto?.estadoproducto || 'N/A'}
+                          </Badge>
+                        </Td>
+                        <Td>{item.stock}</Td>
+                        <Td>
+                          <Badge colorScheme={status.color}>{status.text}</Badge>
+                        </Td>
+                        <Td>{frecuenciaReabastecimiento} pedidos/año</Td>
+                        <Td>{item.stockseguridad}</Td>
+                        <Td>{item.loteoptimo}</Td>
+                        <Td>
+                          <Button
+                            size="sm"
+                            leftIcon={<EditIcon />}
+                            onClick={() => handleEdit(item)}
+                          >
+                            Editar
+                          </Button>
+                          <Button
+                            size="sm"
+                            leftIcon={<EditIcon />}
+                            onClick={() => handleAnalizarProducto(item)}
+                          >
+                            Analizar
+                          </Button>
+                        </Td>
+                      </Tr>
+                    );
+                  })
+                )}
+              </Tbody>
+            </Table>
+          </Box>
           <Text fontSize="xs" color="gray.500" mt={2}>
             * Valores calculados automáticamente según las fórmulas del modelo de inventario
           </Text>
@@ -619,27 +824,7 @@ export default function Inventario() {
                         <CostChart data={analisisProducto} />
                       </Box>
 
-                      {analisisProducto.modeloinventario === 'PERIODO_FIJO' && (
-                        <Box p={4} borderRadius="lg" bg={bgGreen}>
-                          <Text fontWeight="bold" mb={2}>Frecuencia de Pedidos (Período Fijo)</Text>
-                          <VStack align="stretch" spacing={2}>
-                            <Text>
-                              <strong>Frecuencia Histórica:</strong> {analisisProducto.frecuenciaHistorica?.frecuencia || 0} pedidos/año
-                            </Text>
-                            <Text>
-                              <strong>Total Órdenes:</strong> {analisisProducto.frecuenciaHistorica?.totalOrdenes || 0}
-                            </Text>
-                            <Text>
-                              <strong>Período Promedio:</strong> {analisisProducto.frecuenciaHistorica?.periodoPromedio || 0} días
-                            </Text>
-                            {analisisProducto.frecuenciaHistorica?.totalOrdenes === 0 && (
-                              <Text fontSize="sm" color="gray.500">
-                                No hay órdenes de compra históricas para este producto
-                              </Text>
-                            )}
-                          </VStack>
-                        </Box>
-                      )}
+                      
 
                       {/* Mostrar frecuencia histórica para todos los modelos */}
                       <Box p={4} borderRadius="lg" bg={bgPurple}>

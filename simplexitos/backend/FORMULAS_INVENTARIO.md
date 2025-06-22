@@ -33,24 +33,31 @@ Stock de seguridad = 1.64 * sqrt(tiempo_envio) * desviacion_estandar
 Punto de pedido = Demanda diaria promedio * tiempo envío + Stock de seguridad
 ```
 
-### 5. Costos
+### 5. Estado del Stock (LOTE_FIJO)
+```
+- Bajo: stock <= stock_seguridad
+- Medio: stock_seguridad < stock <= punto_pedido
+- Óptimo: stock > punto_pedido
+```
 
-#### 5.1 Costo de Compra
+### 6. Costos
+
+#### 6.1 Costo de Compra
 ```
 Costo de compra = Demanda anual * Precio unitario
 ```
 
-#### 5.2 Costo de Pedido
+#### 6.2 Costo de Pedido
 ```
 Costo de pedido = (Demanda anual / Lote óptimo) * Costo de pedido
 ```
 
-#### 5.3 Costo de Almacenamiento
+#### 6.3 Costo de Almacenamiento
 ```
 Costo de almacenamiento = (Lote óptimo / 2) * Costo de almacenamiento
 ```
 
-#### 5.4 Costo Total (CGI)
+#### 6.4 Costo Total (CGI)
 ```
 Costo total = Costo de compra + Costo de pedido + Costo de almacenamiento
 ```
@@ -67,28 +74,75 @@ T* = sqrt((2 * S) / (D * H))
 - D = Demanda anual
 - H = Costo de almacenamiento
 
-### 2. Lote Óptimo
+### 2. Desviación Estándar de la Demanda durante el Periodo de Revisión y Entrega
 ```
-Lote óptimo = Demanda anual * Tiempo óptimo
+σ = sqrt((tiempo_optimo + tiempo_envio) * DE^2)
 ```
+**Donde:**
+- σ = Desviación estándar del período
+- tiempo_optimo = Tiempo óptimo entre pedidos
+- tiempo_envio = Tiempo de entrega del proveedor
+- DE = Desviación estándar de la demanda diaria
 
-### 3. Demanda Diaria Promedio
+### 3. Stock de Seguridad
 ```
-Demanda diaria promedio = D / 365
+Stock de seguridad = 1.64 * σ
 ```
+**Donde:**
+- 1.64 = Factor de seguridad para un nivel de servicio del 95%
+- σ = Desviación estándar del período calculada en el paso anterior
 
-### 4. Stock de Seguridad
+### 4. Lote Óptimo
 ```
-Stock de seguridad = 1.64 * sqrt(tiempo_envio) * desviacion_estandar
+Lote óptimo = Demanda * Tiempo óptimo + Stock de seguridad
 ```
+**Donde:**
+- Demanda = Demanda anual
+- Tiempo óptimo = Tiempo óptimo entre pedidos
+- Stock de seguridad = Calculado en el paso anterior
 
 ### 5. Punto de Pedido
 ```
-Punto de pedido = Demanda diaria promedio * tiempo envío + Stock de seguridad
+Punto de pedido = Stock de seguridad
+```
+**Nota:** En el modelo de período fijo, el inventario se revisa periódicamente, por lo que el punto de pedido es igual al stock de seguridad.
+
+### 6. Frecuencia de Reabastecimiento
+```
+Frecuencia de reabastecimiento = 1 / Tiempo óptimo
+```
+**Donde:**
+- Tiempo óptimo = Tiempo óptimo entre pedidos calculado en el paso 1
+
+### 7. Estado del Stock (PERIODO_FIJO)
+```
+- Bajo: stock <= stock_seguridad
+- Medio: stock_seguridad < stock <= stock_seguridad * 2
+- Óptimo: stock > stock_seguridad * 2
 ```
 
-### 6. Costos
-Los costos se calculan con las mismas fórmulas que en el modelo LOTE_FIJO.
+### 8. Costos
+Los costos se calculan con las mismas fórmulas que en el modelo LOTE_FIJO:
+
+#### 8.1 Costo de Compra
+```
+Costo de compra = Demanda anual * Precio unitario
+```
+
+#### 8.2 Costo de Pedido
+```
+Costo de pedido = (Demanda anual / Lote óptimo) * Costo de pedido
+```
+
+#### 8.3 Costo de Almacenamiento
+```
+Costo de almacenamiento = (Lote óptimo / 2) * Costo de almacenamiento
+```
+
+#### 8.4 Costo Total (CGI)
+```
+Costo total = Costo de compra + Costo de pedido + Costo de almacenamiento
+```
 
 ## IMPLEMENTACIÓN EN EL CÓDIGO
 
@@ -98,24 +152,82 @@ Los costos se calculan con las mismas fórmulas que en el modelo LOTE_FIJO.
 - `demanda` (DOUBLE): Demanda anual del producto
 - `desviacionestandardemanda` (INTEGER): Desviación estándar de la demanda diaria
 - `costoalmacenamiento` (DOUBLE): Costo de almacenamiento por unidad por año
+- `modeloproducto` (ENUM): 'LOTE_FIJO' o 'PERIODO_FIJO'
 
 #### Tabla `proveedor_producto`:
 - `costopedido` (DOUBLE): Costo fijo por pedido
 - `preciounitario` (DOUBLE): Precio unitario del producto
 - `tiempoenvio` (INTEGER): Tiempo de entrega en días
 
+#### Tabla `inventario`:
+- `stock` (INTEGER): Stock actual
+- `stockseguridad` (INTEGER): Stock de seguridad calculado
+- `puntopedido` (INTEGER): Punto de pedido calculado
+- `loteoptimo` (INTEGER): Lote óptimo calculado
+- `modeloinventario` (ENUM): 'LOTE_FIJO' o 'PERIODO_FIJO'
+- `costocompra` (DOUBLE): Costo de compra calculado
+- `costopedido` (DOUBLE): Costo de pedido calculado
+- `costoalmacenamiento` (DOUBLE): Costo de almacenamiento calculado
+- `cgi` (DOUBLE): Costo total calculado
+
 ### Cálculos Automáticos
 
 Los siguientes valores se calculan automáticamente y **NO** se pueden asignar manualmente:
 
-1. **Lote óptimo**: Calculado según la fórmula EOQ
+1. **Lote óptimo**: Calculado según la fórmula EOQ (LOTE_FIJO) o según las fórmulas de PERIODO_FIJO
 2. **Stock de seguridad**: Calculado con el factor de seguridad del 95%
-3. **Punto de pedido**: Calculado basado en la demanda diaria y stock de seguridad
+3. **Punto de pedido**: Calculado basado en la demanda diaria y stock de seguridad (LOTE_FIJO) o igual al stock de seguridad (PERIODO_FIJO)
 4. **Costos**: Calculados automáticamente según las fórmulas especificadas
+5. **Frecuencia de reabastecimiento**: Calculada automáticamente en PERIODO_FIJO (1 / tiempo óptimo)
 
 ### Nivel de Servicio
 
 El sistema utiliza un factor de seguridad de **1.64**, que corresponde a un **nivel de servicio del 95%**. Esto significa que el stock de seguridad cubrirá la demanda en el 95% de los casos.
+
+## DIFERENCIAS ENTRE MODELOS
+
+### LOTE_FIJO (EOQ)
+- **Característica principal**: Cantidad fija de pedido
+- **Revisión**: Continua (cuando el stock llega al punto de pedido)
+- **Punto de pedido**: Demanda diaria * tiempo envío + Stock de seguridad
+- **Stock de seguridad**: Basado en tiempo de envío y desviación estándar
+- **Estado del stock**:
+  - Bajo: stock ≤ stock_seguridad
+  - Medio: stock_seguridad < stock ≤ punto_pedido
+  - Óptimo: stock > punto_pedido
+
+### PERIODO_FIJO
+- **Característica principal**: Tiempo fijo entre pedidos
+- **Revisión**: Periódica (cada tiempo óptimo)
+- **Punto de pedido**: Igual al stock de seguridad
+- **Stock de seguridad**: Basado en desviación del período de revisión y entrega
+- **Frecuencia de reabastecimiento**: Calculada automáticamente (1 / tiempo óptimo)
+- **Estado del stock**:
+  - Bajo: stock ≤ stock_seguridad
+  - Medio: stock_seguridad < stock ≤ stock_seguridad * 2
+  - Óptimo: stock > stock_seguridad * 2
+
+## CÁLCULO DEL VALOR TOTAL DEL INVENTARIO
+
+El valor total del inventario se calcula sumando el valor de cada producto:
+
+```
+Valor total = Σ(stock * precio_unitario)
+```
+
+**Donde:**
+- stock = Stock actual del producto
+- precio_unitario = Precio unitario del proveedor más barato para ese producto
+
+## ESTADÍSTICAS DEL INVENTARIO
+
+### Categorías de Stock
+- **Stock Insuficiente**: Productos con estado "Bajo" (stock ≤ stock_seguridad)
+- **Stock Suficiente**: Productos con estado "Medio" o "Óptimo" (stock > stock_seguridad)
+
+### Distribución por Modelo
+- **Lote Fijo**: Productos con modelo LOTE_FIJO
+- **Período Fijo**: Productos con modelo PERIODO_FIJO
 
 ## NOTAS IMPORTANTES
 
@@ -125,4 +237,12 @@ El sistema utiliza un factor de seguridad de **1.64**, que corresponde a un **ni
 
 3. **Validaciones**: El sistema valida que todos los datos necesarios estén presentes antes de realizar los cálculos.
 
-4. **Redondeo**: Los valores de lote óptimo, stock de seguridad y punto de pedido se redondean a números enteros para facilitar su uso práctico. 
+4. **Redondeo**: Los valores de lote óptimo, stock de seguridad y punto de pedido se redondean a números enteros para facilitar su uso práctico.
+
+5. **Frecuencia de Reabastecimiento**: En el modelo PERIODO_FIJO, este valor se calcula automáticamente como 1 / tiempo_optimo.
+
+6. **Estado del Stock**: La lógica para determinar el estado del stock es diferente entre LOTE_FIJO y PERIODO_FIJO debido a las características específicas de cada modelo.
+
+7. **Aplicación de Fórmulas**: Las fórmulas se aplican automáticamente según el modelo seleccionado (LOTE_FIJO o PERIODO_FIJO) en el producto.
+
+8. **Valor Total**: Se calcula usando el precio unitario del proveedor más barato para cada producto, multiplicado por el stock actual. 

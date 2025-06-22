@@ -199,21 +199,29 @@ export const updateProducto = async (req, res) => {
           // FÓRMULAS PARA MODELO PERIODO_FIJO:
           
           // 1. Tiempo óptimo entre pedidos: T* = sqrt((2 * S) / (D * H))
+          // Donde: S = costo de pedido, D = demanda anual, H = costo de almacenamiento
           const tiempoOptimo = Math.sqrt((2 * costopedido) / (demanda * costoalmacenamiento));
           
-          // 2. Lote óptimo = demanda anual * tiempo óptimo
-          loteoptimo = demanda * tiempoOptimo;
+          // 2. Desviación estándar de la demanda durante el periodo de revisión y entrega
+          // σ = sqrt(n * (Frecuencia de reabastecimiento + tiempo envío) * DE^2)
+          // Donde: n = número de períodos, DE = desviación estándar de la demanda
+          // Como no tenemos frecuencia de reabastecimiento en inventario, usamos tiempo óptimo
+          const desviacionPeriodo = Math.sqrt(tiempoOptimo * desviacionestandardemanda * desviacionestandardemanda);
           
-          // 3. Demanda diaria promedio = demanda anual / 365 días
-          const demandaDiariaPromedio = demanda / 365;
+          // 3. Stock de seguridad = 1.64 * desviación del período
+          // Donde 1.64 corresponde a un nivel de servicio del 95%
+          stockseguridadCalculado = 1.64 * desviacionPeriodo;
           
-          // 4. Stock de seguridad = 1.64 * sqrt(tiempo_envio) * desviacion_estandar
-          stockseguridadCalculado = 1.64 * Math.sqrt(tiempoenvio) * desviacionestandardemanda;
+          // 4. Lote óptimo = demanda * tiempo óptimo + stock seguridad
+          loteoptimo = demanda * tiempoOptimo + stockseguridadCalculado;
           
-          // 5. Punto de pedido = demanda diaria promedio * tiempo envío + stock seguridad
-          puntopedidoCalculado = demandaDiariaPromedio * tiempoenvio + stockseguridadCalculado;
+          // 5. Punto de pedido = stock seguridad (en modelo período fijo se revisa periódicamente)
+          puntopedidoCalculado = stockseguridadCalculado;
           
-          // 6. Costos
+          // 6. Frecuencia de reabastecimiento = 1 / tiempo óptimo
+          const frecuenciaReabastecimiento = 1 / tiempoOptimo;
+          
+          // 7. Costos (mismas fórmulas que LOTE_FIJO)
           costos.costoCompra = demanda * preciounitario;
           costos.costoPedido = (demanda / loteoptimo) * costopedido;
           costos.costoAlmacenamiento = (loteoptimo / 2) * costoalmacenamiento;
