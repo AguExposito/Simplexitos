@@ -1184,7 +1184,8 @@ export const recalcularInventario = async (req, res) => {
                     } else if (modeloproducto === 'PERIODO_FIJO') {
                         // FÓRMULAS PARA MODELO PERIODO_FIJO:
                         const tiempoOptimo = Math.sqrt((2 * costopedido) / (demanda * costoalmacenamiento));
-                        const desviacionPeriodo = Math.sqrt((tiempoOptimo + tiempoenvio) * desviacionestandardemanda * desviacionestandardemanda);
+                        const tiempo = tiempoOptimo *365;
+                        const desviacionPeriodo = Math.sqrt((tiempo + tiempoenvio) * desviacionestandardemanda * desviacionestandardemanda);
                         stockseguridadCalculado = 1.64 * desviacionPeriodo;
                         loteoptimo = demanda * tiempoOptimo + stockseguridadCalculado;
                         puntopedidoCalculado = stockseguridadCalculado;
