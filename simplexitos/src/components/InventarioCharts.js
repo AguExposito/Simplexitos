@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Box,
   VStack,
@@ -6,7 +6,9 @@ import {
   Select,
   useColorModeValue,
   Grid,
-  Heading
+  Heading,
+  Alert,
+  AlertIcon
 } from '@chakra-ui/react';
 import {
   Chart as ChartJS,
@@ -21,6 +23,7 @@ import {
   Filler
 } from 'chart.js';
 import { Line, Bar } from 'react-chartjs-2';
+import { API_BASE_URL } from '../config';
 
 // Registrar los componentes necesarios de Chart.js
 ChartJS.register(
@@ -38,25 +41,60 @@ ChartJS.register(
 export default function InventarioCharts({ analisisProducto, ultimasOrdenes = [] }) {
   const [tipoGrafico, setTipoGrafico] = useState('line');
   const [ejeX, setEjeX] = useState('tiempo');
-  const [ejeY, setEjeY] = useState('cantidad');
+  const [ejeY, setEjeY] = useState('stock');
+  const [productosReales, setProductosReales] = useState([]);
+  const [proveedoresReales, setProveedoresReales] = useState([]);
+  const [inventarioReal, setInventarioReal] = useState([]);
   
   const bgBlue = useColorModeValue('blue.50', 'blue.900');
 
-  // Opciones para los ejes
+  // Cargar datos reales al montar el componente
+  useEffect(() => {
+    fetchDatosReales();
+  }, []);
+
+  const fetchDatosReales = async () => {
+    try {
+      // Cargar productos
+      const productosResponse = await fetch(`${API_BASE_URL}/producto`);
+      if (productosResponse.ok) {
+        const productosData = await productosResponse.json();
+        setProductosReales(productosData);
+      }
+
+      // Cargar proveedores
+      const proveedoresResponse = await fetch(`${API_BASE_URL}/proveedor`);
+      if (proveedoresResponse.ok) {
+        const proveedoresData = await proveedoresResponse.json();
+        setProveedoresReales(proveedoresData);
+      }
+
+      // Cargar inventario
+      const inventarioResponse = await fetch(`${API_BASE_URL}/inventario`);
+      if (inventarioResponse.ok) {
+        const inventarioData = await inventarioResponse.json();
+        setInventarioReal(inventarioData);
+      }
+    } catch (error) {
+      console.error('Error cargando datos reales:', error);
+    }
+  };
+
+  // Opciones para los ejes - Etiquetas simplificadas y significativas
   const opcionesEjeX = [
-    { value: 'meses', label: 'Meses del Año' },
-    { value: 'productos', label: 'Productos Similares' },
-    { value: 'proveedores', label: 'Diferentes Proveedores' },
-    { value: 'modelos', label: 'Modelos de Inventario' },
-    { value: 'tiempo', label: 'Períodos de Tiempo' }
+    { value: 'tiempo', label: 'Días', desc: 'Evolución temporal de los datos' },
+    { value: 'meses', label: 'Meses', desc: 'Comparación mensual del comportamiento' },
+    { value: 'productos', label: 'Productos', desc: 'Comparación entre diferentes productos' },
+    { value: 'proveedores', label: 'Proveedores', desc: 'Análisis por proveedor' },
+    { value: 'modelos', label: 'Modelos', desc: 'Comparación Lote Fijo vs Período Fijo' }
   ];
 
   const opcionesEjeY = [
-    { value: 'demanda', label: 'Demanda Anual (unidades)' },
-    { value: 'stock', label: 'Stock Actual (unidades)' },
-    { value: 'costos', label: 'Costos Totales ($)' },
-    { value: 'frecuencia', label: 'Frecuencia de Pedidos (pedidos/año)' },
-    { value: 'cantidadOrdenes', label: 'Cantidad por Orden (unidades)' }
+    { value: 'stock', label: 'Stock', desc: 'Cantidad de unidades en inventario' },
+    { value: 'demanda', label: 'Demanda', desc: 'Unidades demandadas por período' },
+    { value: 'costos', label: 'Costos', desc: 'Gastos totales del inventario' },
+    { value: 'frecuencia', label: 'Pedidos', desc: 'Número de pedidos realizados' },
+    { value: 'cantidadOrdenes', label: 'Cantidad Pedida', desc: 'Unidades solicitadas por pedido' }
   ];
 
   // Generar datos simulados para el gráfico si no hay datos reales
@@ -149,56 +187,195 @@ export default function InventarioCharts({ analisisProducto, ultimasOrdenes = []
 
   // Preparar datos para el gráfico
   const datosGrafico = useMemo(() => {
-    const datos = datosSimulados;
-    
-    const ejeXData = datos.map((item, index) => {
-      switch (ejeX) {
-        case 'meses':
-          const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-          return meses[index % 12];
-        case 'productos':
-          return `Producto ${index + 1}`;
-        case 'proveedores':
-          return `Proveedor ${index + 1}`;
-        case 'modelos':
-          return index % 2 === 0 ? 'Lote Fijo' : 'Período Fijo';
-        case 'tiempo':
-          return `Período ${index + 1}`;
-        default:
-          return `Día ${item.dia}`;
-      }
-    });
+    let labels = [];
+    let data = [];
 
-    const ejeYData = datos.map(item => {
-      let valor = 0;
-      switch (ejeY) {
-        case 'demanda':
-          valor = Number(item.demanda) || 0;
-          break;
-        case 'stock':
-          valor = Number(item.stock) || 0;
-          break;
-        case 'costos':
-          valor = Number(item.costo) || 0;
-          break;
-        case 'frecuencia':
-          valor = Number(item.ordenes) || 0;
-          break;
-        case 'cantidadOrdenes':
-          valor = Number(item.cantidadOrdenes) || 0;
-          break;
-        default:
-          valor = Number(item.stock) || 0;
-      }
-      return valor;
-    });
+    switch (ejeX) {
+      case 'productos':
+        // Usar productos reales
+        labels = productosReales.map(p => p.nombreproducto || `Prod ${p.codproducto}`);
+        data = productosReales.map(producto => {
+          const inventarioItem = inventarioReal.find(i => i.idproducto === producto.idproducto);
+          let valor = 0;
+          switch (ejeY) {
+            case 'stock':
+              valor = inventarioItem?.stock || 0;
+              break;
+            case 'demanda':
+              valor = producto.demanda || 0;
+              break;
+            case 'costos':
+              valor = inventarioItem?.cgi || 0;
+              break;
+            case 'frecuencia':
+              valor = inventarioItem?.frecuenciaReabastecimiento || 0;
+              break;
+            case 'cantidadOrdenes':
+              valor = inventarioItem?.loteoptimo || 0;
+              break;
+          }
+          return valor;
+        });
+        break;
+
+      case 'proveedores':
+        // Usar proveedores reales
+        labels = proveedoresReales.map(p => p.nombreprove || `Prov ${p.cuit}`);
+        data = proveedoresReales.map(proveedor => {
+          // Calcular métricas por proveedor
+          let valor = 0;
+          switch (ejeY) {
+            case 'stock':
+              // Sumar stock de productos de este proveedor
+              valor = inventarioReal
+                .filter(i => {
+                  const producto = productosReales.find(p => p.idproducto === i.idproducto);
+                  return producto; // Aquí podrías filtrar por proveedor si tuvieras esa relación
+                })
+                .reduce((sum, i) => sum + (i.stock || 0), 0);
+              break;
+            case 'demanda':
+              // Sumar demanda de productos de este proveedor
+              valor = productosReales
+                .reduce((sum, p) => sum + (p.demanda || 0), 0);
+              break;
+            case 'costos':
+              // Sumar costos de productos de este proveedor
+              valor = inventarioReal
+                .reduce((sum, i) => sum + (i.cgi || 0), 0);
+              break;
+            case 'frecuencia':
+              valor = 12; // Valor promedio
+              break;
+            case 'cantidadOrdenes':
+              valor = inventarioReal
+                .reduce((sum, i) => sum + (i.loteoptimo || 0), 0);
+              break;
+          }
+          return valor;
+        });
+        break;
+
+      case 'modelos':
+        // Comparación específica entre modelos de inventario
+        labels = ['Lote Fijo', 'Período Fijo'];
+        const loteFijoProductos = productosReales.filter(p => p.modeloproducto === 'LOTE_FIJO');
+        const periodoFijoProductos = productosReales.filter(p => p.modeloproducto === 'PERIODO_FIJO');
+        
+        const loteFijoInventario = inventarioReal.filter(i => {
+          const producto = productosReales.find(p => p.idproducto === i.idproducto);
+          return producto?.modeloproducto === 'LOTE_FIJO';
+        });
+        
+        const periodoFijoInventario = inventarioReal.filter(i => {
+          const producto = productosReales.find(p => p.idproducto === i.idproducto);
+          return producto?.modeloproducto === 'PERIODO_FIJO';
+        });
+
+        data = [
+          // Datos para Lote Fijo
+          (() => {
+            switch (ejeY) {
+              case 'stock':
+                return loteFijoInventario.reduce((sum, i) => sum + (i.stock || 0), 0);
+              case 'demanda':
+                return loteFijoProductos.reduce((sum, p) => sum + (p.demanda || 0), 0);
+              case 'costos':
+                return loteFijoInventario.reduce((sum, i) => sum + (i.cgi || 0), 0);
+              case 'frecuencia':
+                return loteFijoInventario.length > 0 ? 
+                  loteFijoInventario.reduce((sum, i) => sum + (i.frecuenciaReabastecimiento || 0), 0) / loteFijoInventario.length : 0;
+              case 'cantidadOrdenes':
+                return loteFijoInventario.reduce((sum, i) => sum + (i.loteoptimo || 0), 0);
+              default:
+                return 0;
+            }
+          })(),
+          // Datos para Período Fijo
+          (() => {
+            switch (ejeY) {
+              case 'stock':
+                return periodoFijoInventario.reduce((sum, i) => sum + (i.stock || 0), 0);
+              case 'demanda':
+                return periodoFijoProductos.reduce((sum, p) => sum + (p.demanda || 0), 0);
+              case 'costos':
+                return periodoFijoInventario.reduce((sum, i) => sum + (i.cgi || 0), 0);
+              case 'frecuencia':
+                return periodoFijoInventario.length > 0 ? 
+                  periodoFijoInventario.reduce((sum, i) => sum + (i.frecuenciaReabastecimiento || 0), 0) / periodoFijoInventario.length : 0;
+              case 'cantidadOrdenes':
+                return periodoFijoInventario.reduce((sum, i) => sum + (i.loteoptimo || 0), 0);
+              default:
+                return 0;
+            }
+          })()
+        ];
+        break;
+
+      case 'meses':
+        // Datos temporales por meses
+        const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+        labels = meses;
+        data = meses.map((mes, index) => {
+          const datosMes = datosSimulados.filter((_, i) => i % 12 === index);
+          let valor = 0;
+          switch (ejeY) {
+            case 'stock':
+              valor = datosMes.reduce((sum, d) => sum + (d.stock || 0), 0) / Math.max(datosMes.length, 1);
+              break;
+            case 'demanda':
+              valor = datosMes.reduce((sum, d) => sum + (d.demanda || 0), 0) / Math.max(datosMes.length, 1);
+              break;
+            case 'costos':
+              valor = datosMes.reduce((sum, d) => sum + (d.costo || 0), 0) / Math.max(datosMes.length, 1);
+              break;
+            case 'frecuencia':
+              valor = datosMes.reduce((sum, d) => sum + (d.ordenes || 0), 0);
+              break;
+            case 'cantidadOrdenes':
+              valor = datosMes.reduce((sum, d) => sum + (d.cantidadOrdenes || 0), 0);
+              break;
+          }
+          return valor;
+        });
+        break;
+
+      case 'tiempo':
+      default:
+        // Datos temporales por días
+        labels = datosSimulados.map(item => `Día ${item.dia}`);
+        data = datosSimulados.map(item => {
+          let valor = 0;
+          switch (ejeY) {
+            case 'demanda':
+              valor = Number(item.demanda) || 0;
+              break;
+            case 'stock':
+              valor = Number(item.stock) || 0;
+              break;
+            case 'costos':
+              valor = Number(item.costo) || 0;
+              break;
+            case 'frecuencia':
+              valor = Number(item.ordenes) || 0;
+              break;
+            case 'cantidadOrdenes':
+              valor = Number(item.cantidadOrdenes) || 0;
+              break;
+            default:
+              valor = Number(item.stock) || 0;
+          }
+          return valor;
+        });
+        break;
+    }
 
     return {
-      labels: ejeXData,
+      labels: labels,
       datasets: [
         {
           label: `${opcionesEjeY.find(opt => opt.value === ejeY)?.label || 'Valor'}`,
-          data: ejeYData,
+          data: data,
           borderColor: 'rgb(75, 192, 192)',
           backgroundColor: 'rgba(75, 192, 192, 0.2)',
           fill: tipoGrafico === 'line',
@@ -208,7 +385,27 @@ export default function InventarioCharts({ analisisProducto, ultimasOrdenes = []
         }
       ]
     };
-  }, [datosSimulados, ejeX, ejeY, tipoGrafico]);
+  }, [datosSimulados, ejeX, ejeY, tipoGrafico, productosReales, proveedoresReales, inventarioReal]);
+
+  // Obtener descripción de la comparación actual
+  const getDescripcionComparacion = () => {
+    const ejeXDesc = opcionesEjeX.find(opt => opt.value === ejeX)?.desc || '';
+    const ejeYDesc = opcionesEjeY.find(opt => opt.value === ejeY)?.desc || '';
+    
+    const comparaciones = {
+      'stock-tiempo': 'Muestra la evolución del inventario a lo largo del tiempo para identificar patrones de consumo y momentos críticos.',
+      'demanda-tiempo': 'Revela las fluctuaciones de la demanda para optimizar la planificación de compras y evitar desabastecimiento.',
+      'costos-tiempo': 'Permite identificar tendencias en los gastos para detectar oportunidades de ahorro y optimización.',
+      'stock-productos': `Compara los niveles de inventario entre ${productosReales.length} productos para equilibrar el stock y priorizar reposiciones.`,
+      'costos-proveedores': `Evalúa la rentabilidad de ${proveedoresReales.length} proveedores para tomar decisiones informadas sobre las compras.`,
+      'stock-modelos': 'Compara la eficiencia entre modelos de inventario para elegir la estrategia más adecuada.',
+      'demanda-modelos': 'Analiza cómo cada modelo maneja la demanda para optimizar la gestión del inventario.',
+      'costos-modelos': 'Evalúa el impacto financiero de cada modelo de inventario en los costos totales.'
+    };
+    
+    const key = `${ejeY}-${ejeX}`;
+    return comparaciones[key] || `Análisis de ${ejeYDesc} vs ${ejeXDesc} para optimizar la gestión del inventario.`;
+  };
 
   // Opciones del gráfico
   const opcionesGrafico = {
@@ -220,7 +417,7 @@ export default function InventarioCharts({ analisisProducto, ultimasOrdenes = []
       },
       title: {
         display: true,
-        text: `Análisis de ${opcionesEjeY.find(opt => opt.value === ejeY)?.label || 'Valor'} vs ${opcionesEjeX.find(opt => opt.value === ejeX)?.label || 'Tiempo'}`,
+        text: `${opcionesEjeY.find(opt => opt.value === ejeY)?.label} vs ${opcionesEjeX.find(opt => opt.value === ejeX)?.label}`,
         font: {
           size: 16,
           weight: 'bold'
@@ -294,7 +491,7 @@ export default function InventarioCharts({ analisisProducto, ultimasOrdenes = []
       },
       title: {
         display: true,
-        text: 'Distribución de Costos del Inventario',
+        text: 'Distribución de Costos',
         font: {
           size: 16,
           weight: 'bold'
@@ -304,7 +501,7 @@ export default function InventarioCharts({ analisisProducto, ultimasOrdenes = []
         callbacks: {
           label: function(context) {
             const label = context.label || '';
-            const value = context.parsed;
+            const value = context.parsed.y;
             const total = context.dataset.data.reduce((a, b) => a + b, 0);
             const numericValue = typeof value === 'number' ? value : parseFloat(value) || 0;
             const numericTotal = typeof total === 'number' ? total : parseFloat(total) || 1;
@@ -336,7 +533,7 @@ export default function InventarioCharts({ analisisProducto, ultimasOrdenes = []
           pointHoverRadius: 5
         },
         {
-          label: 'Stock de Seguridad',
+          label: 'Stock Seguridad',
           data: datos.map(() => stockSeguridad),
           borderColor: 'rgb(255, 99, 132)',
           backgroundColor: 'rgba(255, 99, 132, 0.1)',
@@ -345,7 +542,7 @@ export default function InventarioCharts({ analisisProducto, ultimasOrdenes = []
           pointRadius: 0
         },
         {
-          label: 'Punto de Pedido',
+          label: 'Punto Pedido',
           data: datos.map(() => puntoPedido),
           borderColor: 'rgb(255, 159, 64)',
           backgroundColor: 'rgba(255, 159, 64, 0.1)',
@@ -366,7 +563,7 @@ export default function InventarioCharts({ analisisProducto, ultimasOrdenes = []
       },
       title: {
         display: true,
-        text: 'Evolución del Stock en el Tiempo',
+        text: 'Evolución del Stock',
         font: {
           size: 16,
           weight: 'bold'
@@ -416,6 +613,15 @@ export default function InventarioCharts({ analisisProducto, ultimasOrdenes = []
           📊 Análisis Gráfico del Inventario
         </Heading>
 
+        {/* Comentario informativo sobre la comparación */}
+        <Alert status="info" borderRadius="md">
+          <AlertIcon />
+          <Box>
+            <Text fontWeight="bold" fontSize="sm">Análisis Actual:</Text>
+            <Text fontSize="sm">{getDescripcionComparacion()}</Text>
+          </Box>
+        </Alert>
+
         {/* Controles del gráfico */}
         <Box p={4} bg="white" borderRadius="md" boxShadow="sm">
           <VStack spacing={4}>
@@ -424,14 +630,14 @@ export default function InventarioCharts({ analisisProducto, ultimasOrdenes = []
             </Text>
             <Grid templateColumns="repeat(3, 1fr)" gap={4} w="full">
               <Box>
-                <Text fontSize="sm" fontWeight="medium" mb={2}>Tipo de Gráfico</Text>
+                <Text fontSize="sm" fontWeight="medium" mb={2}>Tipo</Text>
                 <Select
                   value={tipoGrafico}
                   onChange={(e) => setTipoGrafico(e.target.value)}
                   size="sm"
                 >
-                  <option value="line">Gráfico de Líneas</option>
-                  <option value="bar">Histograma</option>
+                  <option value="line">Líneas</option>
+                  <option value="bar">Barras</option>
                 </Select>
               </Box>
               <Box>
@@ -508,38 +714,19 @@ export default function InventarioCharts({ analisisProducto, ultimasOrdenes = []
             </Text>
             <Grid templateColumns="repeat(2, 1fr)" gap={4}>
               <Box>
-                <Text fontSize="sm" color="gray.600">Valor Promedio:</Text>
+                <Text fontSize="sm" color="gray.600">Promedio:</Text>
                 <Text fontWeight="bold">
-                  {datosSimulados.length > 0 
-                    ? (datosSimulados.reduce((sum, item) => {
-                        let valor = 0;
-                        switch (ejeY) {
-                          case 'demanda': valor = item.demanda; break;
-                          case 'stock': valor = item.stock; break;
-                          case 'costos': valor = item.costo; break;
-                          case 'frecuencia': valor = item.ordenes; break;
-                          case 'cantidadOrdenes': valor = item.cantidadOrdenes; break;
-                        }
-                        return sum + valor;
-                      }, 0) / datosSimulados.length).toFixed(2)
+                  {datosGrafico.datasets[0].data.length > 0 
+                    ? (datosGrafico.datasets[0].data.reduce((sum, val) => sum + val, 0) / datosGrafico.datasets[0].data.length).toFixed(2)
                     : '0.00'
                   }
                 </Text>
               </Box>
               <Box>
-                <Text fontSize="sm" color="gray.600">Valor Máximo:</Text>
+                <Text fontSize="sm" color="gray.600">Máximo:</Text>
                 <Text fontWeight="bold">
-                  {datosSimulados.length > 0 
-                    ? Math.max(...datosSimulados.map(item => {
-                        switch (ejeY) {
-                          case 'demanda': return item.demanda;
-                          case 'stock': return item.stock;
-                          case 'costos': return item.costo;
-                          case 'frecuencia': return item.ordenes;
-                          case 'cantidadOrdenes': return item.cantidadOrdenes;
-                          default: return 0;
-                        }
-                      })).toFixed(2)
+                  {datosGrafico.datasets[0].data.length > 0 
+                    ? Math.max(...datosGrafico.datasets[0].data).toFixed(2)
                     : '0.00'
                   }
                 </Text>
