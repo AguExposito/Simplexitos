@@ -35,8 +35,13 @@ import {
   Text,
   Alert,
   AlertIcon,
+  AlertTitle,
+  AlertDescription,
+  Divider,
+  Flex,
+  Icon,
 } from '@chakra-ui/react';
-import { AddIcon } from '@chakra-ui/icons';
+import { AddIcon, InfoIcon, WarningIcon } from '@chakra-ui/icons';
 import { API_BASE_URL } from '../config';
 
 export default function OrdenesCompra() {
@@ -46,6 +51,15 @@ export default function OrdenesCompra() {
   const [productosPorProveedor, setProductosPorProveedor] = useState([]);
   const [proveedoresPorProducto, setProveedoresPorProducto] = useState([]);
   const [seleccionInicial, setSeleccionInicial] = useState('proveedor'); // 'proveedor' o 'producto'
+  const [ordenesActivas, setOrdenesActivas] = useState([]);
+  const [sugerencias, setSugerencias] = useState({
+    proveedorPredeterminado: null,
+    loteOptimo: 0,
+    precioUnitario: 0,
+    productosPredeterminados: [],
+    productosConInventario: [],
+    productoRecomendado: null
+  });
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
 
@@ -73,8 +87,23 @@ export default function OrdenesCompra() {
   useEffect(() => {
     if (formData.idinventario && seleccionInicial === 'producto') {
       fetchProveedoresPorProducto(formData.idinventario);
+      verificarOrdenesActivas(formData.idinventario);
     }
   }, [formData.idinventario, seleccionInicial]);
+
+  // Cargar sugerencias cuando se cargan los proveedores por producto
+  useEffect(() => {
+    if (proveedoresPorProducto.length > 0 && formData.idinventario && seleccionInicial === 'producto') {
+      obtenerSugerencias(formData.idinventario);
+    }
+  }, [proveedoresPorProducto, formData.idinventario, seleccionInicial]);
+
+  // Cargar sugerencias cuando se selecciona un proveedor
+  useEffect(() => {
+    if (formData.idproveedor && seleccionInicial === 'proveedor') {
+      obtenerSugerenciasPorProveedor(formData.idproveedor);
+    }
+  }, [formData.idproveedor, seleccionInicial]);
 
   const fetchOrdenes = async () => {
     try {
@@ -133,6 +162,12 @@ export default function OrdenesCompra() {
       if (response.ok) {
         const data = await response.json();
         setProductosPorProveedor(data);
+        
+        // Obtener sugerencias para el proveedor seleccionado
+        if (data.length > 0) {
+          obtenerSugerenciasPorProveedor(idproveedor, data);
+        }
+        
         if (data.length === 0) {
           toast({
             title: 'Sin productos',
@@ -187,6 +222,91 @@ export default function OrdenesCompra() {
     }
   };
 
+  const verificarOrdenesActivas = async (idinventario) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/orden-compra/activas/${idinventario}`);
+      if (response.ok) {
+        const data = await response.json();
+        setOrdenesActivas(data);
+      }
+    } catch (error) {
+      console.error('Error verificando órdenes activas:', error);
+    }
+  };
+
+  const obtenerSugerencias = async (idinventario) => {
+    try {
+      const inventarioItem = inventario.find(item => item.idinventario === parseInt(idinventario));
+      if (inventarioItem && proveedoresPorProducto.length > 0) {
+        // Buscar el proveedor predeterminado
+        const proveedorPredeterminado = proveedoresPorProducto.find(p => p.proveedor_predeterminado);
+        
+        setSugerencias({
+          proveedorPredeterminado: proveedorPredeterminado || null,
+          loteOptimo: inventarioItem.loteoptimo || 0,
+          precioUnitario: proveedorPredeterminado?.preciounitario || 0,
+          productosPredeterminados: [],
+          productosConInventario: [],
+          productoRecomendado: null
+        });
+
+        // Si hay proveedor predeterminado, sugerirlo automáticamente
+        if (proveedorPredeterminado) {
+          setFormData(prev => ({
+            ...prev,
+            idproveedor: proveedorPredeterminado.idproveedor,
+            cantidadsolicitada: inventarioItem.loteoptimo || 1
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Error obteniendo sugerencias:', error);
+    }
+  };
+
+  const obtenerSugerenciasPorProveedor = async (idproveedor, productosData) => {
+    try {
+      // Buscar productos donde este proveedor es predeterminado
+      const productosPredeterminados = productosData.filter(p => p.proveedor_predeterminado);
+      
+      // Obtener información del inventario para todos los productos
+      const productosConInventario = productosData.map(producto => {
+        const inventarioItem = inventario.find(item => item.idproducto === producto.idproducto);
+        return {
+          ...producto,
+          inventario: inventarioItem,
+          esPredeterminado: producto.proveedor_predeterminado
+        };
+      });
+
+      // Encontrar el primer producto predeterminado o el primero disponible
+      const productoRecomendado = productosPredeterminados.length > 0 
+        ? productosPredeterminados[0] 
+        : productosData[0];
+
+      const inventarioItem = inventario.find(item => item.idproducto === productoRecomendado.idproducto);
+      
+      setSugerencias({
+        proveedorPredeterminado: null,
+        loteOptimo: inventarioItem?.loteoptimo || 0,
+        precioUnitario: productoRecomendado?.preciounitario || 0,
+        productosPredeterminados: productosPredeterminados,
+        productosConInventario: productosConInventario,
+        productoRecomendado: productoRecomendado
+      });
+
+      // Si hay un producto predeterminado, sugerir automáticamente el lote óptimo
+      if (inventarioItem?.loteoptimo) {
+        setFormData(prev => ({
+          ...prev,
+          cantidadsolicitada: inventarioItem.loteoptimo
+        }));
+      }
+    } catch (error) {
+      console.error('Error obteniendo sugerencias por proveedor:', error);
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -200,6 +320,20 @@ export default function OrdenesCompra() {
     } else if (name === 'idinventario' && seleccionInicial === 'producto') {
       setFormData(prev => ({ ...prev, idproveedor: '' }));
     }
+
+    // Si se selecciona un producto y es predeterminado, sugerir el lote óptimo
+    if (name === 'idinventario' && seleccionInicial === 'proveedor' && value) {
+      const inventarioItem = inventario.find(item => item.idinventario === parseInt(value));
+      if (inventarioItem) {
+        const productoSeleccionado = productosPorProveedor.find(p => p.idproducto === inventarioItem.idproducto);
+        if (productoSeleccionado?.proveedor_predeterminado && inventarioItem.loteoptimo) {
+          setFormData(prev => ({
+            ...prev,
+            cantidadsolicitada: inventarioItem.loteoptimo
+          }));
+        }
+      }
+    }
   };
 
   const handleSeleccionInicialChange = (tipo) => {
@@ -212,10 +346,58 @@ export default function OrdenesCompra() {
     }));
     setProductosPorProveedor([]);
     setProveedoresPorProducto([]);
+    setOrdenesActivas([]);
+    setSugerencias({
+      proveedorPredeterminado: null,
+      loteOptimo: 0,
+      precioUnitario: 0,
+      productosPredeterminados: [],
+      productosConInventario: [],
+      productoRecomendado: null
+    });
+  };
+
+  const aplicarSugerencias = () => {
+    if (seleccionInicial === 'producto' && sugerencias.proveedorPredeterminado) {
+      setFormData(prev => ({
+        ...prev,
+        idproveedor: sugerencias.proveedorPredeterminado.idproveedor,
+        cantidadsolicitada: sugerencias.loteOptimo
+      }));
+    } else if (seleccionInicial === 'proveedor' && sugerencias.productoRecomendado) {
+      const inventarioItem = inventario.find(item => item.idproducto === sugerencias.productoRecomendado.idproducto);
+      setFormData(prev => ({
+        ...prev,
+        idinventario: inventarioItem?.idinventario || '',
+        cantidadsolicitada: sugerencias.loteOptimo
+      }));
+    } else if (sugerencias.loteOptimo > 0) {
+      setFormData(prev => ({
+        ...prev,
+        cantidadsolicitada: sugerencias.loteOptimo
+      }));
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Verificar si hay órdenes activas y mostrar confirmación
+    if (ordenesActivas.length > 0) {
+      const confirmar = window.confirm(
+        `⚠️ ADVERTENCIA: Este producto tiene ${ordenesActivas.length} orden(es) activa(s).\n\n` +
+        `¿Está seguro de que desea crear una nueva orden de compra?\n\n` +
+        `Órdenes activas:\n` +
+        ordenesActivas.map(orden => 
+          `- Orden #${orden.idorden_compra}: ${orden.cantidadsolicitada} unidades (${orden.estadoorden})`
+        ).join('\n')
+      );
+      
+      if (!confirmar) {
+        return;
+      }
+    }
+
     try {
       const response = await fetch(`${API_BASE_URL}/orden-compra`, {
         method: 'POST',
@@ -243,6 +425,15 @@ export default function OrdenesCompra() {
         });
         setProductosPorProveedor([]);
         setProveedoresPorProducto([]);
+        setOrdenesActivas([]);
+        setSugerencias({
+          proveedorPredeterminado: null,
+          loteOptimo: 0,
+          precioUnitario: 0,
+          productosPredeterminados: [],
+          productosConInventario: [],
+          productoRecomendado: null
+        });
       } else {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Error al crear la orden de compra');
@@ -425,9 +616,13 @@ export default function OrdenesCompra() {
                         </option>
                         {productosPorProveedor.map((producto) => {
                           const inventarioItem = inventario.find(item => item.idproducto === producto.idproducto);
+                          const esPredeterminado = producto.proveedor_predeterminado;
+                          const loteOptimo = inventarioItem?.loteoptimo;
                           return inventarioItem ? (
                             <option key={inventarioItem.idinventario} value={inventarioItem.idinventario}>
-                              {producto.nombreproducto} - ${producto.preciounitario}
+                              {esPredeterminado ? '⭐ ' : ''}{producto.nombreproducto} - ${producto.preciounitario}
+                              {esPredeterminado ? ' (Predeterminado)' : ''}
+                              {loteOptimo ? ` - Lote: ${loteOptimo}` : ''}
                             </option>
                           ) : null;
                         })}
@@ -503,7 +698,107 @@ export default function OrdenesCompra() {
                       <NumberDecrementStepper />
                     </NumberInputStepper>
                   </NumberInput>
+                  {sugerencias.loteOptimo > 0 && (
+                    <Text fontSize="sm" color="blue.600" mt={1}>
+                      💡 Lote óptimo sugerido: {sugerencias.loteOptimo} unidades
+                    </Text>
+                  )}
                 </FormControl>
+
+                {/* Mostrar sugerencias */}
+                {(sugerencias.proveedorPredeterminado || sugerencias.loteOptimo > 0 || sugerencias.productosPredeterminados.length > 0) && (
+                  <Alert status="info" mb={4}>
+                    <AlertIcon />
+                    <Box>
+                      <AlertTitle>Sugerencias del Sistema</AlertTitle>
+                      <AlertDescription>
+                        <VStack align="start" spacing={2} mt={2}>
+                          {seleccionInicial === 'producto' && sugerencias.proveedorPredeterminado && (
+                            <Text>
+                              <strong>Proveedor predeterminado:</strong> {sugerencias.proveedorPredeterminado.nombreprove} 
+                              (${sugerencias.proveedorPredeterminado.preciounitario})
+                            </Text>
+                          )}
+                          
+                          {seleccionInicial === 'proveedor' && sugerencias.productosPredeterminados.length > 0 && (
+                            <Box>
+                              <Text fontWeight="bold" mb={2}>
+                                ⭐ Productos donde este proveedor es predeterminado:
+                              </Text>
+                              {sugerencias.productosPredeterminados.map((producto, index) => {
+                                const inventarioItem = inventario.find(item => item.idproducto === producto.idproducto);
+                                return (
+                                  <Box key={index} p={2} bg="blue.50" borderRadius="md" mb={1}>
+                                    <Text fontSize="sm">
+                                      <strong>{producto.nombreproducto}</strong> - ${producto.preciounitario}
+                                    </Text>
+                                    <Text fontSize="xs" color="blue.600">
+                                      Lote óptimo: {inventarioItem?.loteoptimo || 'N/A'} unidades
+                                    </Text>
+                                  </Box>
+                                );
+                              })}
+                            </Box>
+                          )}
+                          
+                          {seleccionInicial === 'proveedor' && sugerencias.productosPredeterminados.length === 0 && sugerencias.productoRecomendado && (
+                            <Text>
+                              <strong>Producto recomendado:</strong> {sugerencias.productoRecomendado.nombreproducto} 
+                              (${sugerencias.productoRecomendado.preciounitario})
+                            </Text>
+                          )}
+                          
+                          {sugerencias.loteOptimo > 0 && (
+                            <Text>
+                              <strong>Lote óptimo calculado:</strong> {sugerencias.loteOptimo} unidades
+                            </Text>
+                          )}
+                          
+                          <Button
+                            size="sm"
+                            colorScheme="blue"
+                            onClick={aplicarSugerencias}
+                          >
+                            Aplicar Sugerencias
+                          </Button>
+                        </VStack>
+                      </AlertDescription>
+                    </Box>
+                  </Alert>
+                )}
+
+                {/* Mostrar advertencia de órdenes activas */}
+                {ordenesActivas.length > 0 && (
+                  <Alert status="warning" mb={4}>
+                    <AlertIcon />
+                    <Box>
+                      <AlertTitle>⚠️ Órdenes Activas Detectadas</AlertTitle>
+                      <AlertDescription>
+                        <VStack align="start" spacing={2} mt={2}>
+                          <Text>
+                            Este producto tiene <strong>{ordenesActivas.length} orden(es) activa(s)</strong>:
+                          </Text>
+                          {ordenesActivas.map((orden, index) => (
+                            <Box key={index} p={2} bg="yellow.50" borderRadius="md" w="100%">
+                              <Text fontSize="sm">
+                                <strong>Orden #{orden.idorden_compra}</strong> - {orden.cantidadsolicitada} unidades 
+                                <Badge ml={2} colorScheme={orden.estadoorden === 'RECIBIDA' ? 'green' : 'yellow'}>
+                                  {orden.estadoorden}
+                                </Badge>
+                              </Text>
+                              <Text fontSize="xs" color="gray.600">
+                                Fecha: {new Date(orden.fechaorden).toLocaleDateString()}
+                              </Text>
+                            </Box>
+                          ))}
+                          <Text fontSize="sm" color="orange.600">
+                            Se le pedirá confirmación antes de crear la nueva orden.
+                          </Text>
+                        </VStack>
+                      </AlertDescription>
+                    </Box>
+                  </Alert>
+                )}
 
                 <FormControl mb={4}>
                   <FormLabel>Descripción</FormLabel>

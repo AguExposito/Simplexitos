@@ -7,7 +7,8 @@ import {
   deleteOrdenCompra,
   recibirOrdenCompra,
   cancelarOrdenCompra,
-  deleteAllOrdenesCompra
+  deleteAllOrdenesCompra,
+  getOrdenesActivas
 } from '../controllers/ordenCompraController.mjs';
 
 const ordenCompraRoute = express.Router();
@@ -21,5 +22,6 @@ ordenCompraRoute.put('/orden-compra/:id', updateOrdenCompra);
 ordenCompraRoute.delete('/orden-compra/:id', deleteOrdenCompra);
 ordenCompraRoute.put('/orden-compra/:id/recibir', recibirOrdenCompra);
 ordenCompraRoute.put('/orden-compra/:id/cancelar', cancelarOrdenCompra);
+ordenCompraRoute.get('/orden-compra/activas/:idinventario', getOrdenesActivas);
 
 export default ordenCompraRoute; 

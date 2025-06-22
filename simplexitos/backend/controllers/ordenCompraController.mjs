@@ -199,10 +199,44 @@ export const cancelarOrdenCompra = async (req, res) => {
 
 export const deleteAllOrdenesCompra = async (req, res) => {
   try {
-    await pool.query('DELETE FROM orden_compra');
-    res.json({ message: 'Todas las órdenes de compra han sido eliminadas' });
+    const result = await pool.query('DELETE FROM orden_compra RETURNING *');
+    res.json({ 
+      message: 'Todas las órdenes de compra han sido eliminadas',
+      count: result.rows.length 
+    });
   } catch (error) {
     console.error('Error al eliminar todas las órdenes de compra:', error);
     res.status(500).json({ error: 'Error al eliminar todas las órdenes de compra: ' + error.message });
+  }
+};
+
+// Verificar órdenes activas para un producto específico
+export const getOrdenesActivas = async (req, res) => {
+  try {
+    const { idinventario } = req.params;
+    
+    const result = await pool.query(`
+      SELECT 
+        oc.idorden_compra,
+        oc.cantidadsolicitada,
+        oc.estadoorden,
+        oc.fechaorden,
+        oc.descripcionordendecompra,
+        p.nombreprove
+      FROM orden_compra oc
+      JOIN inventario i ON oc.idinventario = i.idinventario
+      JOIN proveedor p ON oc.idproveedor = p.idproveedor
+      WHERE oc.idinventario = $1 
+      AND oc.estadoorden IN ('ABIERTA', 'RECIBIDA')
+      ORDER BY oc.fechaorden DESC
+    `, [idinventario]);
+    
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error al verificar órdenes activas:', error);
+    res.status(500).json({ 
+      error: 'Error al verificar órdenes activas',
+      details: error.message 
+    });
   }
 }; 
