@@ -277,16 +277,16 @@ async function recalcularInventarioProducto(idproducto) {
       // σ = sqrt((tiempo_optimo + tiempo_envio) * DE^2)
       const desviacionPeriodo = desviacionestandardemanda * Math.sqrt(tiempoOptimo + tiempoenvio);
       
-      // 4. Stock de seguridad = 1.64 * σ - Inventario actual
+      // 4. Stock de seguridad = 1.64 * σ (sin restar inventario actual)
       // Obtener el inventario actual del producto
       const inventarioResult = await pool.query(`
         SELECT stock FROM inventario WHERE idproducto = $1
       `, [idproducto]);
       const inventarioActual = inventarioResult.rows[0]?.stock || 0;
-      stockseguridadCalculado = Math.max(0, 1.64 * desviacionPeriodo - inventarioActual);
+      stockseguridadCalculado = Math.max(0, 1.64 * desviacionPeriodo);
       
-      // 5. Lote óptimo = Demanda diaria * (Tiempo óptimo + tiempo envío) + Stock de seguridad
-      loteoptimo = Math.max(1, demandaDiaria * (tiempoOptimo + tiempoenvio) + stockseguridadCalculado);
+      // 5. Lote óptimo = Demanda diaria * (Tiempo óptimo + tiempo envío) + Stock de seguridad - Inventario actual
+      loteoptimo = Math.max(1, demandaDiaria * (tiempoOptimo + tiempoenvio) + stockseguridadCalculado - inventarioActual);
       
       // 6. Punto de pedido = Stock de seguridad (en PERIODO_FIJO)
       puntopedidoCalculado = stockseguridadCalculado;
