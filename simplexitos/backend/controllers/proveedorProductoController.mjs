@@ -253,10 +253,10 @@ async function recalcularInventarioProducto(idproducto) {
 
     if (modeloproducto === 'LOTE_FIJO') {
       // FÓRMULAS PARA MODELO LOTE_FIJO
-      loteoptimo = Math.sqrt((2 * demanda * costopedido) / costoalmacenamiento);
+      loteoptimo = Math.max(1, Math.sqrt((2 * demanda * costopedido) / costoalmacenamiento));
       const demandaDiariaPromedio = demanda / 365;
-      stockseguridadCalculado = 1.64 * Math.sqrt(tiempoenvio) * desviacionestandardemanda;
-      puntopedidoCalculado = demandaDiariaPromedio * tiempoenvio + stockseguridadCalculado;
+      stockseguridadCalculado = Math.max(0, 1.64 * Math.sqrt(tiempoenvio) * desviacionestandardemanda);
+      puntopedidoCalculado = Math.max(0, demandaDiariaPromedio * tiempoenvio + stockseguridadCalculado);
       
       costos.costoCompra = demanda * preciounitario;
       costos.costoPedido = (demanda / loteoptimo) * costopedido;
@@ -264,17 +264,46 @@ async function recalcularInventarioProducto(idproducto) {
       costos.costoTotal = costos.costoCompra + costos.costoPedido + costos.costoAlmacenamiento;
       
     } else if (modeloproducto === 'PERIODO_FIJO') {
-      // FÓRMULAS PARA MODELO PERIODO_FIJO
-      const tiempoOptimo = Math.sqrt((2 * costopedido) / (demanda * costoalmacenamiento));
-      const desviacionPeriodo = Math.sqrt((tiempoOptimo + tiempoenvio) * desviacionestandardemanda * desviacionestandardemanda);
-      stockseguridadCalculado = 1.64 * desviacionPeriodo;
-      loteoptimo = demanda * tiempoOptimo + stockseguridadCalculado;
+      // FÓRMULAS CORREGIDAS PARA MODELO PERIODO_FIJO según Investigación Operativa:
+      
+      // 1. Tiempo óptimo entre pedidos (T*) en días
+      // T* = sqrt((2 * S) / (D * H)) * 365
+      const tiempoOptimo = Math.sqrt((2 * costopedido) / (demanda * costoalmacenamiento)) * 365;
+      
+      // 2. Demanda diaria
+      const demandaDiaria = demanda / 365;
+      
+      // 3. Desviación estándar del período de revisión + entrega
+      // σ = sqrt((tiempo_optimo + tiempo_envio) * DE^2)
+      const desviacionPeriodo = desviacionestandardemanda * Math.sqrt(tiempoOptimo + tiempoenvio);
+      
+      // 4. Stock de seguridad = 1.64 * σ - Inventario actual
+      // Obtener el inventario actual del producto
+      const inventarioResult = await pool.query(`
+        SELECT stock FROM inventario WHERE idproducto = $1
+      `, [idproducto]);
+      const inventarioActual = inventarioResult.rows[0]?.stock || 0;
+      stockseguridadCalculado = Math.max(0, 1.64 * desviacionPeriodo - inventarioActual);
+      
+      // 5. Lote óptimo = Demanda diaria * (Tiempo óptimo + tiempo envío) + Stock de seguridad
+      loteoptimo = Math.max(1, demandaDiaria * (tiempoOptimo + tiempoenvio) + stockseguridadCalculado);
+      
+      // 6. Punto de pedido = Stock de seguridad (en PERIODO_FIJO)
       puntopedidoCalculado = stockseguridadCalculado;
       
+      // 7. Frecuencia de reabastecimiento = 365 / Tiempo óptimo
+      const frecuenciaReabastecimiento = 365 / tiempoOptimo;
+      
+      // 8. Costos (mismas fórmulas que LOTE_FIJO)
       costos.costoCompra = demanda * preciounitario;
       costos.costoPedido = (demanda / loteoptimo) * costopedido;
       costos.costoAlmacenamiento = (loteoptimo / 2) * costoalmacenamiento;
       costos.costoTotal = costos.costoCompra + costos.costoPedido + costos.costoAlmacenamiento;
+      
+      // Validación: asegurar que todos los valores sean positivos
+      if (loteoptimo < 1) loteoptimo = 1;
+      if (stockseguridadCalculado < 0) stockseguridadCalculado = 0;
+      if (puntopedidoCalculado < 0) puntopedidoCalculado = 0;
     }
 
     // Actualizar el inventario

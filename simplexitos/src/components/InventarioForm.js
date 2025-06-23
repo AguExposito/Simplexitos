@@ -118,7 +118,7 @@ export default function InventarioForm({ isOpen, onClose, inventarioId, productI
 
       toast({
         title: 'Éxito',
-        description: 'Inventario actualizado correctamente. Los valores de lote óptimo, stock de seguridad y punto de pedido se calcularon automáticamente.',
+        description: 'Inventario actualizado y recalculado correctamente. Los valores de lote óptimo, stock de seguridad y punto de pedido se calcularon automáticamente con las fórmulas actualizadas.',
         status: 'success',
         duration: 5000,
         isClosable: true,
@@ -167,7 +167,7 @@ export default function InventarioForm({ isOpen, onClose, inventarioId, productI
               <Box>
                 <Text fontWeight="bold">Cálculos Automáticos</Text>
                 <Text fontSize="sm">
-                  Los valores de lote óptimo, stock de seguridad y punto de pedido se calculan automáticamente 
+                  Al guardar, los valores de lote óptimo, stock de seguridad y punto de pedido se calculan automáticamente 
                   basándose en las fórmulas del modelo de inventario seleccionado.
                 </Text>
               </Box>
@@ -186,13 +186,13 @@ export default function InventarioForm({ isOpen, onClose, inventarioId, productI
             </FormControl>
 
             <FormControl mb={4}>
-              <FormLabel>Stock Actual</FormLabel>
+              <FormLabel>Stock Actual (unidades)</FormLabel>
               <NumberInput 
                 min={0} 
                 value={formData.stock}
                 onChange={(value) => handleNumberChange('stock', value)}
               >
-                <NumberInputField />
+                <NumberInputField placeholder="Ej: 100" />
                 <NumberInputStepper>
                   <NumberIncrementStepper />
                   <NumberDecrementStepper />

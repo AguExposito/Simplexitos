@@ -263,9 +263,9 @@ export default function Productos() {
               <Th>Código</Th>
               <Th>Nombre</Th>
               <Th>Modelo</Th>
-              <Th>Demanda Anual</Th>
-              <Th>Desviación Estándar de Demanda</Th>
-              <Th>Costo Almacenamiento</Th>
+              <Th>Demanda Anual (unidades/año)</Th>
+              <Th>Desviación Estándar (unidades/día)</Th>
+              <Th>Costo Almacenamiento ($/unidad/año)</Th>
               <Th>Stock Actual</Th>
               <Th>Estado</Th>
               <Th>Acciones</Th>
@@ -278,8 +278,8 @@ export default function Productos() {
                 <Td>{producto.nombreproducto}</Td>
                 <Td>{producto.modeloproducto}</Td>
                 <Td>{producto.demanda?.toFixed(2) || '0.00'} unidades/año</Td>
-                <Td>{producto.desviacionestandardemanda}</Td>
-                <Td>{producto.costoalmacenamiento?.toFixed(2) || '0.00'}</Td>
+                <Td>{producto.desviacionestandardemanda} unidades/día</Td>
+                <Td>${producto.costoalmacenamiento?.toFixed(2) || '0.00'} /unidad/año</Td>
                 <Td>{getStockBadge(producto.stockactual)}</Td>
                 <Td>{producto.estadoproducto}</Td>
                 <Td>
@@ -360,11 +360,12 @@ export default function Productos() {
                 />
               </FormControl>
               <FormControl isRequired>
-                <FormLabel>Costo de Almacenamiento</FormLabel>
+                <FormLabel>Costo de Almacenamiento (por unidad por año)</FormLabel>
                 <Input
                   name="costoalmacenamiento"
                   value={formData.costoalmacenamiento}
                   onChange={handleInputChange}
+                  placeholder="Ej: 20.00"
                 />
               </FormControl>
               <FormControl isRequired>
@@ -379,19 +380,21 @@ export default function Productos() {
                 </Select>
               </FormControl>
               <FormControl isRequired mb={4}>
-                <FormLabel>Demanda Anual</FormLabel>
+                <FormLabel>Demanda Anual (unidades por año)</FormLabel>
                 <Input
                   name="demanda"
                   value={formData.demanda}
                   onChange={handleInputChange}
+                  placeholder="Ej: 10000"
                 />
               </FormControl>
               <FormControl isRequired mb={4}>
-                <FormLabel>Desviación Estándar de Demanda</FormLabel>
+                <FormLabel>Desviación Estándar de Demanda (unidades por día)</FormLabel>
                 <Input
                   name="desviacionestandardemanda"
                   value={formData.desviacionestandardemanda}
                   onChange={handleInputChange}
+                  placeholder="Ej: 5"
                 />
               </FormControl>
             </ModalBody>

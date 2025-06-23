@@ -8,22 +8,32 @@ import {
   getInventarioByProducto,
   updateInventarioByProducto,
   getValorTotalInventario,
-  recalcularInventario
+  recalcularInventario,
+  limpiarValoresNegativos,
+  probarCalculos,
+  recalcularInventarioAutomatico,
+  recalcularInventarioPorId
 } from '../controllers/inventarioController.mjs';
 
 const inventarioRoute = express.Router();
 
-// Rutas de inventario
-inventarioRoute.get('/inventario', getInventario);
+// Rutas específicas primero (para evitar conflictos con rutas con parámetros)
 inventarioRoute.get('/inventario/total', getValorTotalInventario);
-inventarioRoute.get('/inventario/:id', getInventarioById);
 inventarioRoute.get('/inventario/producto/:idproducto', getInventarioByProducto);
-inventarioRoute.post('/inventario', createInventario);
-inventarioRoute.put('/inventario/:id', updateInventario);
-inventarioRoute.put('/inventario/producto/:idproducto', updateInventarioByProducto);
-inventarioRoute.delete('/inventario/:id', deleteInventario);
-
-// Ruta para recalcular automáticamente todos los valores del inventario
 inventarioRoute.post('/inventario/recalcular', recalcularInventario);
+inventarioRoute.post('/inventario/limpiar-negativos', limpiarValoresNegativos);
+inventarioRoute.get('/inventario/probar-calculos', probarCalculos);
+inventarioRoute.post('/inventario/:idinventario/recalcular-automatico', recalcularInventarioAutomatico);
+inventarioRoute.post('/inventario/:idinventario/recalcular', recalcularInventarioPorId);
+
+// Rutas con parámetros después
+inventarioRoute.get('/inventario/:id', getInventarioById);
+inventarioRoute.put('/inventario/:id', updateInventario);
+inventarioRoute.delete('/inventario/:id', deleteInventario);
+inventarioRoute.put('/inventario/producto/:idproducto', updateInventarioByProducto);
+
+// Rutas generales al final
+inventarioRoute.get('/inventario', getInventario);
+inventarioRoute.post('/inventario', createInventario);
 
 export default inventarioRoute;

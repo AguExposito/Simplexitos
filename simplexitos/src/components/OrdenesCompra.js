@@ -684,7 +684,7 @@ export default function OrdenesCompra() {
                 <Th>ID</Th>
                 <Th>Producto</Th>
                 <Th>Proveedor</Th>
-                <Th>Cantidad</Th>
+                <Th>Cantidad (unidades)</Th>
                 <Th>Estado</Th>
                 <Th>Fecha</Th>
                 <Th>Descripción</Th>
@@ -697,7 +697,7 @@ export default function OrdenesCompra() {
                   <Td>{orden.idorden_compra}</Td>
                   <Td>{getProductoNombre(orden.idinventario)}</Td>
                   <Td>{getProveedorNombre(orden.idproveedor)}</Td>
-                  <Td>{orden.cantidadsolicitada}</Td>
+                  <Td>{orden.cantidadsolicitada} unidades</Td>
                   <Td>{getEstadoBadge(orden.estadoorden)}</Td>
                   <Td>{new Date(orden.fechaorden).toLocaleDateString()}</Td>
                   <Td>{orden.descripcionordendecompra || 'N/A'}</Td>
@@ -886,13 +886,13 @@ export default function OrdenesCompra() {
                 )}
 
                 <FormControl mb={4}>
-                  <FormLabel>Cantidad</FormLabel>
+                  <FormLabel>Cantidad (unidades)</FormLabel>
                   <NumberInput
                     min={1}
                     value={formData.cantidadsolicitada}
                     onChange={(value) => setFormData(prev => ({ ...prev, cantidadsolicitada: value }))}
                   >
-                    <NumberInputField />
+                    <NumberInputField placeholder="Ej: 100" />
                     <NumberInputStepper>
                       <NumberIncrementStepper />
                       <NumberDecrementStepper />

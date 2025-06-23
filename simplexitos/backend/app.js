@@ -4,6 +4,11 @@ import { fileURLToPath } from 'url';
 import cors from 'cors';
 import db from './db/connection.mjs';
 import inventarioRoute from './routes/inventarioRoute.mjs';
+import ordenCompraRoute from './routes/ordenCompraRoute.mjs';
+import productoRoute from './routes/productoRoute.mjs';
+import proveedorRoute from './routes/proveedorRoute.mjs';
+import proveedorProductoRoute from './routes/proveedorProductoRoute.mjs';
+import ventaRoute from './routes/ventaRoute.mjs';
 
 const app = express();
 const port = 3000;
@@ -17,7 +22,13 @@ const __dirname = path.dirname(__filename);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Registrar todas las rutas
 app.use('/', inventarioRoute);
+app.use('/', ordenCompraRoute);
+app.use('/', productoRoute);
+app.use('/', proveedorRoute);
+app.use('/', proveedorProductoRoute);
+app.use('/', ventaRoute);
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, './index.html'));

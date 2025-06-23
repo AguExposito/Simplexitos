@@ -64,14 +64,26 @@ export default function Inventario() {
     fetchInventario();
     fetchProductos();
     fetchValorTotal();
-    // Ejecutar recálculo automático al acceder a la sección
-    recalcularInventarioAutomatico();
   }, []);
 
   const fetchInventario = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/inventario`);
       const data = await response.json();
+      console.log('Datos del inventario cargados:', data.length, 'items');
+      if (data.length > 0) {
+        console.log('Ejemplo de item con valores calculados:', {
+          idinventario: data[0].idinventario,
+          stock: data[0].stock,
+          stockseguridad: data[0].stockseguridad,
+          loteoptimo: data[0].loteoptimo,
+          puntopedido: data[0].puntopedido,
+          costocompra: data[0].costocompra,
+          costopedido: data[0].costopedido,
+          costoalmacenamiento: data[0].costoalmacenamiento,
+          cgi: data[0].cgi
+        });
+      }
       setInventario(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching inventory:', error);
@@ -124,11 +136,24 @@ export default function Inventario() {
 
   // Función para recargar todos los datos necesarios
   const recargarTodosLosDatos = async () => {
-    await Promise.all([
-      fetchInventario(),
-      fetchProductos(),
-      fetchValorTotal()
-    ]);
+    try {
+      console.log('Recargando todos los datos del inventario...');
+      await Promise.all([
+        fetchInventario(),
+        fetchProductos(),
+        fetchValorTotal()
+      ]);
+      console.log('Datos recargados exitosamente');
+    } catch (error) {
+      console.error('Error al recargar datos:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudieron recargar los datos',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
   };
 
   const recalcularInventarioAutomatico = async () => {

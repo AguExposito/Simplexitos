@@ -6,8 +6,8 @@ export const getOrdenesCompra = async (req, res) => {
       SELECT 
         oc.*,
         i.idproducto,
-        p.nombreproducto,
-        pr.nombreprove
+        COALESCE(p.nombreproducto, 'Producto no encontrado') as nombreproducto,
+        COALESCE(pr.nombreprove, 'Proveedor no encontrado') as nombreprove
       FROM orden_compra oc
       LEFT JOIN inventario i ON oc.idinventario = i.idinventario
       LEFT JOIN producto p ON i.idproducto = p.idproducto
@@ -228,6 +228,29 @@ export const getOrdenesActivas = async (req, res) => {
   try {
     const { idinventario } = req.params;
     
+    console.log('Buscando órdenes activas para inventario:', idinventario);
+    
+    if (!idinventario) {
+      return res.status(400).json({ 
+        error: 'ID de inventario requerido',
+        details: 'El parámetro idinventario es obligatorio'
+      });
+    }
+    
+    // Verificar que el inventario existe
+    const inventarioCheck = await pool.query(
+      'SELECT idinventario FROM inventario WHERE idinventario = $1',
+      [idinventario]
+    );
+    
+    if (inventarioCheck.rows.length === 0) {
+      console.log('Inventario no encontrado:', idinventario);
+      return res.status(404).json({ 
+        error: 'Inventario no encontrado',
+        idinventario: idinventario
+      });
+    }
+    
     const result = await pool.query(`
       SELECT 
         oc.idorden_compra,
@@ -235,21 +258,25 @@ export const getOrdenesActivas = async (req, res) => {
         oc.estadoorden,
         oc.fechaorden,
         oc.descripcionordendecompra,
-        p.nombreprove
+        COALESCE(p.nombreprove, 'Sin proveedor') as nombreprove
       FROM orden_compra oc
       JOIN inventario i ON oc.idinventario = i.idinventario
-      JOIN proveedor p ON oc.idproveedor = p.idproveedor
+      LEFT JOIN proveedor p ON oc.idproveedor = p.idproveedor
       WHERE oc.idinventario = $1 
       AND oc.estadoorden IN ('PENDIENTE', 'ENVIADA')
       ORDER BY oc.fechaorden DESC
     `, [idinventario]);
     
+    console.log(`Órdenes activas encontradas: ${result.rows.length}`);
+    
     res.json(result.rows);
   } catch (error) {
     console.error('Error al verificar órdenes activas:', error);
+    console.error('Parámetros recibidos:', req.params);
     res.status(500).json({ 
       error: 'Error al verificar órdenes activas',
-      details: error.message 
+      details: error.message,
+      params: req.params
     });
   }
 };
@@ -303,6 +330,36 @@ export const finalizarOrdenCompra = async (req, res) => {
       [id]
     );
 
+    // Recalcular automáticamente el inventario si es modelo PERIODO_FIJO
+    let recalculado = false;
+    if (orden.modeloproducto === 'PERIODO_FIJO') {
+      try {
+        console.log('Recalculando inventario automáticamente después de finalizar orden PERIODO_FIJO');
+        
+        // Importar la función de recálculo automático
+        const { recalcularInventarioAutomatico } = await import('../controllers/inventarioController.mjs');
+        
+        // Crear un mock response para la función de recálculo
+        const mockRes = {
+          json: (data) => {
+            console.log('Recálculo automático completado:', data);
+            recalculado = true;
+          },
+          status: (code) => ({
+            json: (data) => {
+              if (code !== 200) {
+                console.error('Error en recálculo automático:', data);
+              }
+            }
+          })
+        };
+        
+        await recalcularInventarioAutomatico({ params: { idinventario: orden.idinventario } }, mockRes);
+      } catch (error) {
+        console.error('Error al recalcular inventario automáticamente:', error);
+      }
+    }
+
     // Verificar si con la nueva cantidad el stock supera el punto de pedido (solo para LOTE_FIJO)
     let advertencia = null;
     if (orden.modeloproducto === 'LOTE_FIJO' && nuevoStock <= orden.puntopedido) {
@@ -318,6 +375,7 @@ export const finalizarOrdenCompra = async (req, res) => {
       message: 'Orden de compra finalizada correctamente',
       data: result.rows[0],
       nuevoStock: nuevoStock,
+      recalculado: recalculado,
       advertencia: advertencia
     });
   } catch (error) {

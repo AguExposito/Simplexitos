@@ -1,4 +1,4 @@
-# FÓRMULAS DE INVENTARIO IMPLEMENTADAS
+# FÓRMULAS DE INVENTARIO IMPLEMENTADAS (CORREGIDAS)
 
 ## MODELO LOTE_FIJO (EOQ - Economic Order Quantity)
 
@@ -62,19 +62,26 @@ Costo de almacenamiento = (Lote óptimo / 2) * Costo de almacenamiento
 Costo total = Costo de compra + Costo de pedido + Costo de almacenamiento
 ```
 
-## MODELO PERIODO_FIJO
+## MODELO PERIODO_FIJO (FÓRMULAS CORREGIDAS)
 
 ### 1. Tiempo Óptimo entre Pedidos (T*)
 ```
-T* = sqrt((2 * S) / (D * H))
+T* = sqrt((2 * S) / (D * H)) * 365
 ```
 **Donde:**
-- T* = Tiempo óptimo entre pedidos
+- T* = Tiempo óptimo entre pedidos (en días)
 - S = Costo de pedido
 - D = Demanda anual
 - H = Costo de almacenamiento
 
-### 2. Desviación Estándar de la Demanda durante el Periodo de Revisión y Entrega
+### 2. Demanda Diaria
+```
+Demanda diaria = D / 365
+```
+**Donde:**
+- D = Demanda anual
+
+### 3. Desviación Estándar de la Demanda durante el Periodo de Revisión y Entrega
 ```
 σ = sqrt((tiempo_optimo + tiempo_envio) * DE^2)
 ```
@@ -84,7 +91,7 @@ T* = sqrt((2 * S) / (D * H))
 - tiempo_envio = Tiempo de entrega del proveedor
 - DE = Desviación estándar de la demanda diaria
 
-### 3. Stock de Seguridad
+### 4. Stock de Seguridad
 ```
 Stock de seguridad = 1.64 * σ
 ```
@@ -92,57 +99,85 @@ Stock de seguridad = 1.64 * σ
 - 1.64 = Factor de seguridad para un nivel de servicio del 95%
 - σ = Desviación estándar del período calculada en el paso anterior
 
-### 4. Lote Óptimo
+### 5. Lote Óptimo (CORREGIDO)
 ```
-Lote óptimo = Demanda * Tiempo óptimo + Stock de seguridad
+Lote óptimo = Demanda diaria * Tiempo óptimo + Stock de seguridad
 ```
 **Donde:**
-- Demanda = Demanda anual
-- Tiempo óptimo = Tiempo óptimo entre pedidos
+- Demanda diaria = Demanda anual / 365
+- Tiempo óptimo = Tiempo óptimo entre pedidos (en días)
 - Stock de seguridad = Calculado en el paso anterior
 
-### 5. Punto de Pedido
+**NOTA IMPORTANTE:** Esta es la fórmula corregida. La fórmula anterior era incorrecta y causaba valores negativos.
+
+### 6. Punto de Pedido
 ```
 Punto de pedido = Stock de seguridad
 ```
 **Nota:** En el modelo de período fijo, el inventario se revisa periódicamente, por lo que el punto de pedido es igual al stock de seguridad.
 
-### 6. Frecuencia de Reabastecimiento
+### 7. Frecuencia de Reabastecimiento
 ```
-Frecuencia de reabastecimiento = 1 / Tiempo óptimo
+Frecuencia de reabastecimiento = 365 / Tiempo óptimo
 ```
 **Donde:**
 - Tiempo óptimo = Tiempo óptimo entre pedidos calculado en el paso 1
 
-### 7. Estado del Stock (PERIODO_FIJO)
+### 8. Estado del Stock (PERIODO_FIJO)
 ```
 - Bajo: stock <= stock_seguridad
 - Medio: stock_seguridad < stock <= stock_seguridad * 2
 - Óptimo: stock > stock_seguridad * 2
 ```
 
-### 8. Costos
+### 9. Costos
 Los costos se calculan con las mismas fórmulas que en el modelo LOTE_FIJO:
 
-#### 8.1 Costo de Compra
+#### 9.1 Costo de Compra
 ```
 Costo de compra = Demanda anual * Precio unitario
 ```
 
-#### 8.2 Costo de Pedido
+#### 9.2 Costo de Pedido
 ```
 Costo de pedido = (Demanda anual / Lote óptimo) * Costo de pedido
 ```
 
-#### 8.3 Costo de Almacenamiento
+#### 9.3 Costo de Almacenamiento
 ```
 Costo de almacenamiento = (Lote óptimo / 2) * Costo de almacenamiento
 ```
 
-#### 8.4 Costo Total (CGI)
+#### 9.4 Costo Total (CGI)
 ```
 Costo total = Costo de compra + Costo de pedido + Costo de almacenamiento
 ```
+
+## CORRECCIONES IMPLEMENTADAS
+
+### Problemas Identificados y Solucionados:
+
+1. **Fórmula incorrecta del Lote Óptimo en PERIODO_FIJO:**
+   - **Antes (INCORRECTO):** `loteoptimo = demandaDiaria * (tiempoOptimo + tiempoenvio) + stockseguridadCalculado`
+   - **Después (CORRECTO):** `loteoptimo = demandaDiaria * tiempoOptimo + stockseguridadCalculado`
+
+2. **Cálculo innecesario del inventario actual:**
+   - Se eliminó el cálculo del inventario actual que causaba valores negativos
+   - El lote óptimo ahora se calcula directamente según las fórmulas de Investigación Operativa
+
+3. **Validaciones agregadas:**
+   - Se asegura que el lote óptimo sea al menos 1
+   - Se asegura que el stock de seguridad sea no negativo
+   - Se asegura que el punto de pedido sea no negativo
+
+4. **Consistencia en todas las funciones:**
+   - Se corrigieron las fórmulas en `inventarioController.mjs`
+   - Se corrigieron las fórmulas en `productoController.mjs`
+   - Se corrigieron las fórmulas en `proveedorProductoController.mjs`
+
+### Nuevo Endpoint para Recalcular:
+
+Se agregó un nuevo endpoint `/inventario/recalcular-corregido` que aplica las fórmulas corregidas a todos los productos.
 
 ## IMPLEMENTACIÓN EN EL CÓDIGO
 
@@ -174,11 +209,11 @@ Costo total = Costo de compra + Costo de pedido + Costo de almacenamiento
 
 Los siguientes valores se calculan automáticamente y **NO** se pueden asignar manualmente:
 
-1. **Lote óptimo**: Calculado según la fórmula EOQ (LOTE_FIJO) o según las fórmulas de PERIODO_FIJO
+1. **Lote óptimo**: Calculado según la fórmula EOQ (LOTE_FIJO) o según las fórmulas corregidas de PERIODO_FIJO
 2. **Stock de seguridad**: Calculado con el factor de seguridad del 95%
 3. **Punto de pedido**: Calculado basado en la demanda diaria y stock de seguridad (LOTE_FIJO) o igual al stock de seguridad (PERIODO_FIJO)
 4. **Costos**: Calculados automáticamente según las fórmulas especificadas
-5. **Frecuencia de reabastecimiento**: Calculada automáticamente en PERIODO_FIJO (1 / tiempo óptimo)
+5. **Frecuencia de reabastecimiento**: Calculada automáticamente en PERIODO_FIJO (365 / tiempo óptimo)
 
 ### Nivel de Servicio
 
@@ -201,7 +236,7 @@ El sistema utiliza un factor de seguridad de **1.64**, que corresponde a un **ni
 - **Revisión**: Periódica (cada tiempo óptimo)
 - **Punto de pedido**: Igual al stock de seguridad
 - **Stock de seguridad**: Basado en desviación del período de revisión y entrega
-- **Frecuencia de reabastecimiento**: Calculada automáticamente (1 / tiempo óptimo)
+- **Frecuencia de reabastecimiento**: Calculada automáticamente (365 / tiempo óptimo)
 - **Estado del stock**:
   - Bajo: stock ≤ stock_seguridad
   - Medio: stock_seguridad < stock ≤ stock_seguridad * 2
@@ -239,10 +274,14 @@ Valor total = Σ(stock * precio_unitario)
 
 4. **Redondeo**: Los valores de lote óptimo, stock de seguridad y punto de pedido se redondean a números enteros para facilitar su uso práctico.
 
-5. **Frecuencia de Reabastecimiento**: En el modelo PERIODO_FIJO, este valor se calcula automáticamente como 1 / tiempo_optimo.
+5. **Frecuencia de Reabastecimiento**: En el modelo PERIODO_FIJO, este valor se calcula automáticamente como 365 / tiempo_optimo.
 
 6. **Estado del Stock**: La lógica para determinar el estado del stock es diferente entre LOTE_FIJO y PERIODO_FIJO debido a las características específicas de cada modelo.
 
 7. **Aplicación de Fórmulas**: Las fórmulas se aplican automáticamente según el modelo seleccionado (LOTE_FIJO o PERIODO_FIJO) en el producto.
 
-8. **Valor Total**: Se calcula usando el precio unitario del proveedor más barato para cada producto, multiplicado por el stock actual. 
+8. **Valor Total**: Se calcula usando el precio unitario del proveedor más barato para cada producto, multiplicado por el stock actual.
+
+9. **Fórmulas Corregidas**: Las fórmulas del modelo PERIODO_FIJO han sido corregidas para evitar valores negativos y seguir estrictamente los principios de Investigación Operativa.
+
+10. **Validaciones de Seguridad**: Se han agregado validaciones para asegurar que todos los valores calculados sean no negativos. 

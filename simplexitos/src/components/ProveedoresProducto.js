@@ -237,9 +237,9 @@ export default function ProveedoresProducto({ productoId, nombreProducto }) {
         <Thead>
           <Tr>
             <Th>Proveedor</Th>
-            <Th>Precio Unitario</Th>
+            <Th>Precio Unitario ($/unidad)</Th>
             <Th>Tiempo Envío (días)</Th>
-            <Th>Costo Pedido</Th>
+            <Th>Costo Pedido ($/pedido)</Th>
             <Th>Predeterminado</Th>
             <Th>Acciones</Th>
           </Tr>
@@ -259,9 +259,9 @@ export default function ProveedoresProducto({ productoId, nombreProducto }) {
                   )}
                 </HStack>
               </Td>
-              <Td>${prov.preciounitario}</Td>
-              <Td>{prov.tiempoenvio}</Td>
-              <Td>${prov.costopedido}</Td>
+              <Td>${prov.preciounitario?.toFixed(2) || '0.00'}</Td>
+              <Td>{prov.tiempoenvio} días</Td>
+              <Td>${prov.costopedido?.toFixed(2) || '0.00'}</Td>
               <Td>
                 {prov.proveedor_predeterminado ? (
                   <Badge colorScheme="green" borderRadius="full" px={2}>
@@ -332,13 +332,13 @@ export default function ProveedoresProducto({ productoId, nombreProducto }) {
               )}
               
               <FormControl mb={4}>
-                <FormLabel>Costo de Pedido</FormLabel>
+                <FormLabel>Costo de Pedido (por pedido)</FormLabel>
                 <NumberInput 
                   min={0}
                   value={formData.costopedido}
                   onChange={(value) => handleNumberChange('costopedido', value)}
                 >
-                  <NumberInputField />
+                  <NumberInputField placeholder="Ej: 5000" />
                   <NumberInputStepper>
                     <NumberIncrementStepper />
                     <NumberDecrementStepper />
@@ -347,13 +347,13 @@ export default function ProveedoresProducto({ productoId, nombreProducto }) {
               </FormControl>
               
               <FormControl mb={4}>
-                <FormLabel>Precio Unitario</FormLabel>
+                <FormLabel>Precio Unitario (por unidad)</FormLabel>
                 <NumberInput 
                   min={0}
                   value={formData.preciounitario}
                   onChange={(value) => handleNumberChange('preciounitario', value)}
                 >
-                  <NumberInputField />
+                  <NumberInputField placeholder="Ej: 100.00" />
                   <NumberInputStepper>
                     <NumberIncrementStepper />
                     <NumberDecrementStepper />
@@ -368,7 +368,7 @@ export default function ProveedoresProducto({ productoId, nombreProducto }) {
                   value={formData.tiempoenvio}
                   onChange={(value) => handleNumberChange('tiempoenvio', value)}
                 >
-                  <NumberInputField />
+                  <NumberInputField placeholder="Ej: 5" />
                   <NumberInputStepper>
                     <NumberIncrementStepper />
                     <NumberDecrementStepper />
